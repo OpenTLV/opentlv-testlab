@@ -1,0 +1,589 @@
+{
+  "schema": 1,
+  "fixtures": [
+    {
+      "id": "octets-empty",
+      "operation": "decode",
+      "wire": "04 00",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "04",
+          "length": 0,
+          "length_bytes": "00",
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "octets-binary",
+      "operation": "decode",
+      "wire": "04 03 00 ff 41",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "04",
+          "length": 3,
+          "length_bytes": "03",
+          "value": "00ff41"
+        }
+      }
+    },
+    {
+      "id": "short-length-127",
+      "operation": "decode",
+      "wire": "04 7f 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "04",
+          "length": 127,
+          "length_bytes": "7f",
+          "value": "41414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        }
+      }
+    },
+    {
+      "id": "boolean-false",
+      "operation": "decode",
+      "wire": "01 01 00",
+      "schema": {
+        "type": "boolean"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "01",
+          "length": 1,
+          "length_bytes": "01",
+          "value": "00"
+        }
+      }
+    },
+    {
+      "id": "boolean-true",
+      "operation": "decode",
+      "wire": "01 01 ff",
+      "schema": {
+        "type": "boolean"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "01",
+          "length": 1,
+          "length_bytes": "01",
+          "value": "ff"
+        }
+      }
+    },
+    {
+      "id": "integer-lower-bound",
+      "operation": "decode",
+      "wire": "02 01 01",
+      "schema": {
+        "type": "integer"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "02",
+          "length": 1,
+          "length_bytes": "01",
+          "value": "01"
+        }
+      }
+    },
+    {
+      "id": "integer-sign-padding",
+      "operation": "decode",
+      "wire": "02 02 00 80",
+      "schema": {
+        "type": "integer"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "02",
+          "length": 2,
+          "length_bytes": "02",
+          "value": "0080"
+        }
+      }
+    },
+    {
+      "id": "integer-upper-bound",
+      "operation": "decode",
+      "wire": "02 04 7f ff ff ff",
+      "schema": {
+        "type": "integer"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "02",
+          "length": 4,
+          "length_bytes": "04",
+          "value": "7fffffff"
+        }
+      }
+    },
+    {
+      "id": "bit-string",
+      "operation": "decode",
+      "wire": "03 02 05 a0",
+      "schema": {
+        "type": "bit_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "03",
+          "length": 2,
+          "length_bytes": "02",
+          "value": "05a0"
+        }
+      }
+    },
+    {
+      "id": "bit-string-empty",
+      "operation": "decode",
+      "wire": "03 01 00",
+      "schema": {
+        "type": "bit_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "03",
+          "length": 1,
+          "length_bytes": "01",
+          "value": "00"
+        }
+      }
+    },
+    {
+      "id": "ia5-string",
+      "operation": "decode",
+      "wire": "16 03 41 42 43",
+      "schema": {
+        "type": "ia5string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "16",
+          "length": 3,
+          "length_bytes": "03",
+          "value": "414243"
+        }
+      }
+    },
+    {
+      "id": "implicit-context-30",
+      "operation": "decode",
+      "wire": "9e 01 41",
+      "schema": {
+        "type": "octet_string",
+        "tag": 30
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "9e",
+          "length": 1,
+          "length_bytes": "01",
+          "value": "41"
+        }
+      }
+    },
+    {
+      "id": "implicit-context-sequence",
+      "operation": "decode",
+      "wire": "a1 03 04 01 41",
+      "schema": {
+        "type": "sequence",
+        "tag": 1,
+        "fields": [
+          {
+            "name": "item",
+            "schema": {
+              "type": "octet_string"
+            }
+          }
+        ]
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "a1",
+          "length": 3,
+          "length_bytes": "03",
+          "children": [
+            {
+              "identifier": "04",
+              "length": 1,
+              "length_bytes": "01",
+              "value": "41"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "explicit-context",
+      "operation": "decode",
+      "wire": "a0 03 04 01 41",
+      "schema": {
+        "type": "explicit",
+        "tag": 0,
+        "inner": {
+          "type": "octet_string"
+        }
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "a0",
+          "length": 3,
+          "length_bytes": "03",
+          "children": [
+            {
+              "identifier": "04",
+              "length": 1,
+              "length_bytes": "01",
+              "value": "41"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "nested-sequence",
+      "operation": "decode",
+      "wire": "30 0b 04 01 41 30 06 02 01 01 02 01 02",
+      "schema": {
+        "type": "sequence",
+        "fields": [
+          {
+            "name": "name",
+            "schema": {
+              "type": "octet_string"
+            }
+          },
+          {
+            "name": "nested",
+            "schema": {
+              "type": "sequence_of",
+              "item": {
+                "type": "integer"
+              }
+            }
+          }
+        ]
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "30",
+          "length": 11,
+          "length_bytes": "0b",
+          "children": [
+            {
+              "identifier": "04",
+              "length": 1,
+              "length_bytes": "01",
+              "value": "41"
+            },
+            {
+              "identifier": "30",
+              "length": 6,
+              "length_bytes": "06",
+              "children": [
+                {
+                  "identifier": "02",
+                  "length": 1,
+                  "length_bytes": "01",
+                  "value": "01"
+                },
+                {
+                  "identifier": "02",
+                  "length": 1,
+                  "length_bytes": "01",
+                  "value": "02"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "empty-sequence-of",
+      "operation": "decode",
+      "wire": "30 00",
+      "schema": {
+        "type": "sequence_of",
+        "item": {
+          "type": "octet_string"
+        }
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "30",
+          "length": 0,
+          "length_bytes": "00",
+          "children": []
+        }
+      }
+    },
+    {
+      "id": "sequence-of-false",
+      "operation": "decode",
+      "wire": "30 03 01 01 00",
+      "schema": {
+        "type": "sequence_of",
+        "item": {
+          "type": "boolean"
+        }
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "30",
+          "length": 3,
+          "length_bytes": "03",
+          "children": [
+            {
+              "identifier": "01",
+              "length": 1,
+              "length_bytes": "01",
+              "value": "00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "empty-input",
+      "operation": "decode",
+      "wire": "",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "reject",
+        "framing": "empty"
+      }
+    },
+    {
+      "id": "truncated-tag-only",
+      "operation": "decode",
+      "wire": "04",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "reject",
+        "framing": "truncated"
+      }
+    },
+    {
+      "id": "truncated-value",
+      "operation": "decode",
+      "wire": "04 02 41",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "reject",
+        "framing": "truncated"
+      }
+    },
+    {
+      "id": "truncated-child",
+      "operation": "decode",
+      "wire": "30 03 04 02 41",
+      "schema": {
+        "type": "sequence_of",
+        "item": {
+          "type": "octet_string"
+        }
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "reject",
+        "framing": "truncated"
+      }
+    },
+    {
+      "id": "trailing-element",
+      "operation": "decode",
+      "wire": "04 00 04 00",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "reject",
+        "framing": "trailing"
+      }
+    },
+    {
+      "id": "high-tag",
+      "operation": "decode",
+      "wire": "9f 1f 01 41",
+      "schema": {
+        "type": "octet_string",
+        "tag": 31
+      },
+      "classification": "unsupported",
+      "reason": "lua-asn1 rejects high-tag-number form (high-tag)"
+    },
+    {
+      "id": "indefinite-constructed",
+      "operation": "decode",
+      "wire": "30 80 04 00 00 00",
+      "schema": {
+        "type": "sequence_of",
+        "item": {
+          "type": "octet_string"
+        }
+      },
+      "classification": "unsupported",
+      "reason": "lua-asn1 rejects indefinite lengths (indefinite-constructed)"
+    },
+    {
+      "id": "application-class",
+      "operation": "decode",
+      "wire": "44 01 41",
+      "schema": {
+        "type": "octet_string",
+        "tag": 4,
+        "class": "application"
+      },
+      "classification": "unsupported",
+      "reason": "lua-asn1 has only universal and context tags (application-private-classes)"
+    },
+    {
+      "id": "constructed-octets",
+      "operation": "decode",
+      "wire": "24 03 04 01 41",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "unsupported",
+      "reason": "lua-asn1 has no constructed OCTET STRING (constructed-octets)"
+    },
+    {
+      "id": "negative-integer",
+      "operation": "decode",
+      "wire": "02 01 ff",
+      "schema": {
+        "type": "integer"
+      },
+      "classification": "unsupported",
+      "reason": "lua-asn1 rejects negative INTEGER values (negative-integer)"
+    },
+    {
+      "id": "null-type",
+      "operation": "decode",
+      "wire": "05 00",
+      "schema": {
+        "type": "null"
+      },
+      "classification": "unsupported",
+      "reason": "lua-asn1 has no NULL type constructor"
+    },
+    {
+      "id": "long-length-128",
+      "operation": "decode",
+      "wire": "04 81 80 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "unsupported",
+      "reason": "Known lua-asn1 long-length defect (known-difference-long-length-128)"
+    },
+    {
+      "id": "boolean-noncanonical",
+      "operation": "decode",
+      "wire": "01 01 01",
+      "schema": {
+        "type": "boolean"
+      },
+      "classification": "inconclusive",
+      "reason": "Typed BOOLEAN cannot retain a noncanonical true octet"
+    },
+    {
+      "id": "boolean-empty",
+      "operation": "decode",
+      "wire": "01 00",
+      "schema": {
+        "type": "boolean"
+      },
+      "classification": "inconclusive",
+      "reason": "No shared BOOLEAN validation contract (semantic-boolean-validation)"
+    },
+    {
+      "id": "integer-nonminimal",
+      "operation": "decode",
+      "wire": "02 02 00 01",
+      "schema": {
+        "type": "integer"
+      },
+      "classification": "inconclusive",
+      "reason": "Typed INTEGER cannot retain nonminimal encoding"
+    },
+    {
+      "id": "bit-string-padding",
+      "operation": "decode",
+      "wire": "03 02 05 a1",
+      "schema": {
+        "type": "bit_string"
+      },
+      "classification": "inconclusive",
+      "reason": "Typed BIT STRING drops nonzero padding bits"
+    },
+    {
+      "id": "length-nonminimal",
+      "operation": "decode",
+      "wire": "04 81 03 41 42 43",
+      "schema": {
+        "type": "octet_string"
+      },
+      "classification": "inconclusive",
+      "reason": "Nonminimal long-form length has no reliable lua-asn1 contract (ambiguous-nonminimal-length)"
+    }
+  ]
+}

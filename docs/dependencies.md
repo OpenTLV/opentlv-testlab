@@ -26,9 +26,9 @@ inferred from the resolved Lua executable's `bin` directory. With system
 The runtime must provide `bit32` and `table.unpack`. Version output and the
 interpreter executable digest are recorded, rather than trusting the name `lua`.
 The script removes inherited Lua search/startup settings and LuaRocks config
-overrides. A private LuaRocks config disables rock servers; the selected source
-rock has no non-Lua rock dependencies. The compiler, CMake and Git remain local
-build prerequisites. This is a dependency pin and installation contract, not a
+overrides. A private LuaRocks config allows only `luarocks.org`; the selected rock
+has no non-Lua rock dependencies. The compiler, CMake and Git remain local build
+prerequisites. This is a dependency pin and installation contract, not a
 bit-for-bit reproducible toolchain or native binary guarantee.
 
 ## External library installation and cache
@@ -87,39 +87,50 @@ It reruns all 35 external capability checks against the **installed** modules.
 `--offline` is rejected without `--external-only`; it cannot waive fresh OpenTLV
 acquisition. `--external-only` without `--offline` permits cold external setup.
 
-## Fresh OpenTLV release package
+## Fresh OpenTLV package from LuaRocks
 
-[`dependencies/opentlv-lua.json`](../dependencies/opentlv-lua.json) selects the
-published [OpenTLV Lua v0.3.0 release][release], release ID `427813424`, binding
-commit `8fff4a001f34117647a7d59ff9b4602a2b330453`, rock `0.3.0-1`, and Core commit
-`345c77acb29266036df5f27d04ce315bb61853cc`. Release identity and asset digests were
-checked on 2026-10-30. The source rock supports Lua 5.2; the published precompiled
-archives target Lua 5.4 and are not used for this comparison.
+OpenTLV Lua is the package under test, so TestLab installs it the way a user does:
+from the [luarocks.org registry][registry] with `luarocks`. External libraries are
+cached; this package never is.
 
-Every complete setup creates a new UUID run directory and downloads all three
-pinned assets: `release-manifest.json`, `opentlv-0.3.0-1.rockspec` and
-`opentlv-0.3.0-1.src.rock`. There is no OpenTLV cache, HTTP conditional request or
-fallback to a previous run/local sibling checkout. Downloads request revalidation
-and use no credentials, including on redirects. SHA-256 is checked against the
-committed pin; a missing, replaced or truncated asset fails setup.
+[`dependencies/opentlv-lua.json`](../dependencies/opentlv-lua.json) selects server
+`https://luarocks.org`, rock `0.3.0-1`, its source rock and rockspec digests, binding
+commit `8fff4a001f34117647a7d59ff9b4602a2b330453` and Core commit
+`345c77acb29266036df5f27d04ce315bb61853cc`. The digests were checked on 2026-10-30
+against both the registry and the [v0.3.0 GitHub Release][release]. Setup downloads
+nothing from that release.
 
-The manifest must match the binding version, tag, binding commit, Core commit
-and source-rock/rockspec digests. The installer executes `luarocks unpack` on the
-fresh source rock, checks its rockspec against the independently downloaded file,
-then runs `luarocks make` in the unpacked source with a new private install tree.
-These are the same source-rock installation steps used by the binding's own
-package consumer checks; keeping the unpacked tree lets TestLab verify the
-actual fetched Core Git commit after compilation. No Core override is passed.
+Every complete setup creates a new UUID run directory with a private LuaRocks config
+and download cache, then runs:
 
-It checks the installed facade, rockspec, Lua/Core license bytes and release
-metadata. Source rocks legitimately have an empty `binding_revision`; provenance
-comes from the pinned manifest and source-rock digest, not from inventing Git
-metadata in an archive. An isolated Lua process checks the loaded native module
-path, both public version APIs and a small BER read/encode round trip.
+```sh
+luarocks --only-server=https://luarocks.org download opentlv 0.3.0-1
+luarocks --only-server=https://luarocks.org install opentlv 0.3.0-1
+```
 
-This verifies the selected published bytes and their installed identity. It does
-not repeat the publisher's Full release gate or independently reverify Sigstore
-attestations. Existing release records are provenance, not newly executed tests.
+The commands also pass `--lua-version=5.2`, `--lua-dir` and a private `--tree`. There is
+no OpenTLV cache or fallback to a mirror, previous run or sibling checkout. LuaRocks
+does not check a rock against a pin, so TestLab checks the downloaded source rock's
+SHA-256, its rockspec and its Core selector **before installing**. A missing or
+replaced rock fails setup.
+
+The `install` command resolves the version through the registry and builds the
+source rock, which fetches Core by exact commit from its Git repository. No Core
+override is passed. LuaRocks then removes its build directory, so TestLab
+checks the short Core commit reported in the build output against the pin.
+
+It also checks that the installed facade, rockspec and Lua license match the verified
+rock, that a Core license is present, and the release metadata. Source rocks
+legitimately have an empty `binding_revision`; provenance comes from the pin and
+source-rock digest, not from inventing Git metadata in an archive. An isolated Lua
+process checks the loaded native module path, both public version APIs and a small
+BER read/encode round trip.
+
+This verifies what the registry serves and its installed identity. The `download` and
+`install` commands are separate requests, so the digest does not cover a rock replaced
+between them; the installed files are checked against the verified rock to narrow that.
+The compiled module has no pin. Setup does not repeat the publisher's Full release
+gate or verify Sigstore attestations.
 
 ## Run records and downstream use
 
@@ -127,40 +138,41 @@ Runs default to `build/dependency-runs/<uuid>`; override this with `--runs-dir`.
 Keep runs outside the external cache. Each run retains:
 
 - `provenance.json`: status, timestamps, runtime/platform, cache key and hit/miss,
-  exact source pins, fresh asset URLs/hashes/sizes, installed-file hashes, verified
-  Core commit, version metadata and LuaRocks/CMake tool versions;
+  exact source pins, the registry, source-rock hash and size, installed-file hashes,
+  verified Core commit, version metadata and LuaRocks/CMake tool versions;
 - `capabilities.log` and, for complete setup, `install.log`;
-- fresh downloads, unpacked source, Core checkout, build and installed `tree`;
+- the downloaded source rock, private LuaRocks cache and installed `tree`;
 - `failure.json` when setup fails after creating the run directory.
 
 Only `status: "passed"` represents successful setup. External-only receipts have
 no `opentlv` section. The `environment` object supplies explicit `LUA_PATH` and
 `LUA_CPATH` for the two installed libraries without default/fallback path suffixes.
-The future runner should clear inherited `LUA_INIT*` and versioned `LUA_PATH*` /
-`LUA_CPATH*` overrides before using it. Paths are local to that run; a receipt
-copied as a CI artifact does not make its installed files portable or persistent.
+The [differential runner](differential-runner.md) clears inherited `LUA_*` overrides
+and gives each adapter only its own library's paths. Paths are local to that run; a
+receipt copied as a CI artifact does not make its installed files portable or persistent.
 
 ## Fast CI and verification
 
 Fast runs the Python policy tests, restores **only an exact external cache key**,
-performs a complete fresh OpenTLV installation, and performs an offline external
-cache hit check. It never caches the run directory, OpenTLV downloads, Core build
-or installed native module. Provenance and logs are uploaded even on failure.
+performs a complete fresh OpenTLV installation from luarocks.org, and performs an
+offline external cache hit check. It never caches the run directory, OpenTLV downloads,
+Core build or installed native module. Provenance and logs are uploaded even on failure.
 No fuzzy restore keys permit a different configuration to masquerade as a hit.
 
 Tests cover cold/warm behavior, key invalidation, offline misses, corruption,
-extra/missing installed files, incomplete downloads/installs, fresh release
-acquisition on repeated runs and release integrity/provenance failures. The
-setup smoke check is not the differential runner planned in issue #4. Local
+extra/missing installed files, incomplete downloads/installs, fresh registry
+acquisition on repeated runs and package integrity/provenance failures. The
+setup smoke check is not the [differential runner](differential-runner.md). Local
 success and a committed Fast workflow do not establish hosted CI success.
 
-Local verification on 2026-10-30 passed 21 Python tests on Windows and WSL.
-Under WSL, Lua 5.2.4 / LuaRocks 3.11.1 / CMake 3.28.3 completed two full setups:
-the first external cache miss became a hit on the second, while each run freshly
-downloaded all three OpenTLV assets, built the release rock and passed the native
-package smoke check. An offline external cache hit and a separate cold install
-with spaces in the cache path also passed all 35 capability checks. Both modules
-loaded together using each complete run's recorded environment. Hosted Fast
+Local verification on 2026-10-30 passed 60 Python tests on Windows and WSL. Under
+WSL, Lua 5.2.4 and CMake 3.28.3 completed full setups with LuaRocks 3.8.0, the version
+Ubuntu 24.04 packages but built here from upstream source, and with 3.11.1. The first
+external cache miss became a hit on the second setup, while each run installed OpenTLV
+v0.3.0 from luarocks.org with its own LuaRocks cache and passed the native package
+smoke check. Offline external cache hits passed all 35 capability checks. A failing
+`luarocks download` stopped setup after one attempt, with no fallback. Hosted Fast
 remains to be verified on the PR.
 
+[registry]: https://luarocks.org/modules/marekcingel/opentlv
 [release]: https://github.com/OpenTLV/opentlv-lua/releases/tag/v0.3.0

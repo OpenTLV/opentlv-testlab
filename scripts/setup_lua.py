@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Marek Cingel
 
-"""Stage cached lua-asn1 and freshly install the pinned OpenTLV release rock."""
+"""Stage cached lua-asn1 and freshly install the pinned OpenTLV rock from LuaRocks."""
 
 import argparse
 from datetime import datetime, timezone
@@ -16,8 +16,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import urllib.request
 import uuid
+import zipfile
 
 if __package__:
     from .check_asn1 import ROOT, load_pin, verify_source
@@ -143,85 +143,68 @@ def load_release_pin():
             "Invalid release version")
     for key in ("commit", "core_commit"):
         require(re.fullmatch(r"[0-9a-f]{40}", pin[key]), "Invalid release commit")
-    require(set(pin["assets"]) == {"release-manifest.json",
-            f"opentlv-{pin['rock_version']}.rockspec", f"opentlv-{pin['rock_version']}.src.rock"},
+    require(pin["server"] == "https://luarocks.org", "OpenTLV must come from the LuaRocks registry")
+    require(set(pin["assets"]) == {f"opentlv-{pin['rock_version']}.rockspec",
+                                   f"opentlv-{pin['rock_version']}.src.rock"},
             "Unexpected release asset inventory")
     require(all(re.fullmatch(r"[0-9a-f]{64}", v) for v in pin["assets"].values()), "Invalid asset digest")
     return pin
 
 
-def fetch_bytes(url):
-    # Public downloads only: never forward credentials to release-asset redirects.
-    request = urllib.request.Request(url, headers={"Cache-Control": "no-cache"})
-    with urllib.request.urlopen(request, timeout=60) as response:
-        return response.read()
-
-
-def acquire_release(directory, pin):
-    """Always fetch all assets; existing files or previous run receipts cannot satisfy this."""
+def acquire_release(directory, pin, command, env, log):
+    """Let LuaRocks fetch the rock; only bytes matching the pin may be installed."""
     directory.mkdir(parents=True, exist_ok=False)
-    base = f"https://github.com/{pin['repository']}/releases/download/{pin['tag']}/"
-    assets = []
-    for name, expected in pin["assets"].items():
-        data = fetch_bytes(base + name)
-        require(hashlib.sha256(data).hexdigest() == expected, f"Release SHA-256 mismatch: {name}")
-        (directory / name).write_bytes(data)
-        assets.append({"name": name, "url": base + name, "sha256": expected, "size": len(data)})
-    manifest = json.loads((directory / "release-manifest.json").read_text(encoding="utf-8"))
-    request = manifest["request"]
-    require(manifest["schema"] == 1 and request["repository"] == pin["repository"] and
-            request["tag"] == pin["tag"] and request["version"] == pin["version"] and
-            request["commit"] == request["lua_sha"] == pin["commit"] and
-            request["core_sha"] == pin["core_commit"], "Release manifest identity mismatch")
-    rocks = [r["release_rock"] for r in manifest["quality"]["records"] if r.get("release_rock")]
-    require(rocks and all(r == rocks[0] for r in rocks), "Inconsistent release rock evidence")
-    rock = rocks[0]
-    require(rock["sha256"] == pin["assets"][rock["rock"]] and
-            rock["rockspec_sha256"] == pin["assets"][f"opentlv-{pin['rock_version']}.rockspec"] and
-            rock["commit"] == pin["commit"] and rock["core_commit"] == pin["core_commit"] and
-            rock["tag"] == pin["tag"], "Release rock provenance mismatch")
-    return assets
+    name = f"opentlv-{pin['rock_version']}.src.rock"
+    run(command + ["download", "opentlv", pin["rock_version"]], cwd=directory, env=env, log=log)
+    require([p.name for p in directory.iterdir()] == [name], "LuaRocks did not download the source rock")
+    rock = directory / name
+    require(digest(rock) == pin["assets"][name], f"Registry SHA-256 mismatch: {name}")
+    return rock
 
 
 def install_release(directory, pin, lua, rocks, lua_prefix):
-    assets = acquire_release(directory / "downloads", pin)
     log = directory / "install.log"
     env = clean_env()
-    # A fresh config prevents a user's LuaRocks variables from replacing build commands.
+    # A new config and download cache: no user setting, mirror or earlier run can supply the rock.
     config = directory / "luarocks-config.lua"
-    config.write_text("rocks_servers = {}\n", encoding="utf-8")
+    config.write_text(f"rocks_servers = {{{json.dumps(pin['server'])}}}\n"
+                      f"local_cache = {json.dumps(str(directory / 'luarocks-cache'))}\n", encoding="utf-8")
     env["LUAROCKS_CONFIG"] = str(config)
-    command = [rocks, "--lua-version=5.2", "--lua-dir=" + str(lua_prefix),
-               "--tree=" + str(directory / "tree")]
-    name = "opentlv-" + pin["rock_version"]
-    run(command + ["unpack", directory / "downloads" / (name + ".src.rock")],
-        cwd=directory, env=env, log=log)
-    source = directory / name / "opentlv-lua"
-    require((source / (name + ".rockspec")).read_bytes() ==
-            (directory / "downloads" / (name + ".rockspec")).read_bytes(), "Unpacked rockspec differs")
-    run(command + ["make", name + ".rockspec", "--deps-mode=none"],
-        cwd=source, env=env, log=log, timeout=600)
-    core = source / "build/luarocks/_deps/opentlv_core-src"
-    core_commit = run(["git", "rev-parse", "HEAD"], cwd=core, env=env)
-    require(core_commit == pin["core_commit"], "Installed release used a different Core")
     tree = directory / "tree"
+    command = [rocks, "--lua-version=5.2", "--lua-dir=" + str(lua_prefix), "--tree=" + str(tree),
+               "--only-server=" + pin["server"]]
+    rock = acquire_release(directory / "downloads", pin, command, env, log)
+    name = "opentlv-" + pin["rock_version"]
+    with zipfile.ZipFile(rock) as archive:
+        rockspec = archive.read(name + ".rockspec")
+        pure_source = archive.read("opentlv-lua/lua/opentlv/init.lua")
+        license_text = archive.read("opentlv-lua/LICENSE")
+        selector = archive.read("opentlv-lua/cmake/Core.cmake").decode("utf-8")
+    require(hashlib.sha256(rockspec).hexdigest() == pin["assets"][name + ".rockspec"], "Rock contains a different rockspec")
+    require(f"GIT_TAG {pin['core_commit']}" in selector, "Rock selects a different Core")
+    output = run(command + ["install", "opentlv", pin["rock_version"]],
+                 cwd=directory, env=env, log=log, timeout=600)
+    # LuaRocks removes its build directory, but Core reports the commit it was configured from.
+    built_core = re.search(r"OpenTLV version: \S+ \(\S+-([0-9a-f]{8}),", output)
+    require(built_core and built_core.group(1) == pin["core_commit"][:8], "Installed release used a different Core")
     metadata_dir = tree / "lib/luarocks/rocks-5.2/opentlv" / pin["rock_version"]
     metadata = json.loads((metadata_dir / "lua-version.json").read_text(encoding="utf-8"))
     require(metadata == {"binding_version": pin["version"], "binding_revision": "",
                          "release_tag": pin["tag"], "dirty": False}, "Installed version mismatch")
     pure = tree / "share/lua/5.2/opentlv/init.lua"
     native = tree / "lib/lua/5.2/opentlv/_core.so"
-    for installed, original in [(pure, source / "lua/opentlv/init.lua"),
-                                (metadata_dir / (name + ".rockspec"), source / (name + ".rockspec")),
-                                (metadata_dir / "doc/LICENSE", source / "LICENSE"),
-                                (metadata_dir / "doc/LICENSE-Core", core / "LICENSE")]:
-        require(installed.read_bytes() == original.read_bytes(), f"Installed payload differs: {installed}")
+    for installed, original in [(pure, pure_source), (metadata_dir / (name + ".rockspec"), rockspec),
+                                (metadata_dir / "doc/LICENSE", license_text)]:
+        require(installed.read_bytes() == original, f"Installed payload differs: {installed}")
+    require((metadata_dir / "doc/LICENSE-Core").read_bytes(), "Installed release has no Core license")
     paths = {"LUA_PATH": str(tree / "share/lua/5.2/?/init.lua"),
              "LUA_CPATH": str(tree / "lib/lua/5.2/?.so")}
     run([lua, ROOT / "tests/dependency_smoke.lua", pin["version"], native],
         cwd=directory, env={**env, **paths}, log=log)
-    return {"acquisition": "fresh", "pin": pin, "assets": assets, "metadata": metadata,
-            "core_commit": core_commit, "environment": paths,
+    return {"acquisition": "fresh", "source": pin["server"], "pin": pin,
+            "assets": [{"name": rock.name, "sha256": digest(rock), "size": rock.stat().st_size}],
+            "metadata": metadata, "core_commit": pin["core_commit"], "built_core_commit": built_core.group(1),
+            "environment": paths,
             "installed_files": {str(p.relative_to(tree)): digest(p)
                                 for p in tree.rglob("*") if p.is_file()},
             "tools": {"luarocks": run([rocks, "--version"], env=env),

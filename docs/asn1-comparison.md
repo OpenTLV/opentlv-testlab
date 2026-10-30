@@ -76,10 +76,12 @@ value bytes. Bound nesting (initially at most four levels) and input size in the
 future corpus. Do not infer a schema from the same library output being tested.
 
 Use `syntax.decode(wire)` / `syntax.encode(value)` (dot calls, not colon calls)
-for external types. Use `opentlv.read(wire, opentlv.formats.ber)` and check its
-consumed size against `#wire`; descend into constructed `element.value` with
-Reader or Tree Reader. Encoding uses `opentlv.formats.ber:encode(tag, value)`
-or Writer/Tree Writer with fixture-specified raw values.
+for external types. Use `opentlv.read_source(wire, opentlv.formats.ber)` and check
+its encoded size against `#wire`; descend into constructed `element.value` with
+Reader `next_source()`. A Source is needed for the original length bytes: the
+v0.3.0 API guide lists `raw_length` on elements, but the installed elements have no
+such field. Encoding uses `opentlv.formats.ber:encode(tag, value)` or Writer/Tree
+Writer with fixture-specified raw values.
 
 Preserve identifier bytes, original length bytes, numeric value length, raw
 primitive values, ordered children and consumed size. An external typed result
@@ -91,9 +93,10 @@ output bytes only for fixtures with one agreed canonical representation.
 
 ## Concrete comparison matrix
 
-`Shared` means eligible for the future differential corpus, not evidence that
-both libraries have already run together. Probe IDs refer to
-`tests/asn1_capabilities.lua`; those checks characterize the external pin only.
+`Shared` means eligible for the differential corpus, not evidence that both
+libraries have run on every listed fixture; the
+[runner guide](differential-runner.md) identifies what currently runs. Probe IDs
+refer to `tests/asn1_capabilities.lua`; those checks characterize the external pin only.
 
 | Operation / fixture | External operation | OpenTLV Lua operation | Decision / comparison |
 | --- | --- | --- | --- |
@@ -130,7 +133,8 @@ differences of this exact pin, not failures attributed to OpenTLV.
 
 ## Outcomes and error boundaries
 
-For follow-up runner work, classify eligibility **before** executing a comparison:
+The [differential runner](differential-runner.md) applies these rules. Eligibility
+is declared by the fixture **before** any comparison runs:
 
 - **Pass**: both operations satisfy a shared fixture's explicit expectations.
 - **Mismatch**: a supported, unambiguous fixture differs in bytes/tree/value or
@@ -144,8 +148,8 @@ External errors are Lua assertions/strings, sometimes incidental type errors.
 Only normalize them to `rejected` for the narrow malformed framing cases;
 do not equate error text, offsets or detailed categories with `opentlv.Error`.
 A crash, timeout, missing dependency or wrong source hash is an audit/run failure,
-never an `unsupported` result that turns CI green. The future runner must
-distinguish resource-limit failures from BER rejection.
+never an `unsupported` result that turns CI green. The runner distinguishes
+resource-limit failures from BER rejection.
 
 ## Verification and follow-up ownership
 
@@ -156,20 +160,20 @@ updating the pin requires revisiting the matrix, not silently accepting a fork
 or local fixes. Python tests verify that changed/missing source is rejected.
 
 Fast now runs that audit on the cached installed external library, alongside
-fresh OpenTLV package setup. Hosted CI evidence must be checked on the PR; local
-execution alone does not fulfill the hosted Fast gate. The standalone scope
-audit does not acquire OpenTLV or execute the future differential runner.
+fresh OpenTLV package setup and the differential seed fixtures. Hosted CI evidence
+must be checked on the PR; local execution alone does not fulfill the hosted Fast
+gate. The standalone scope audit does not acquire OpenTLV or execute the runner.
 
 Local evidence on 2026-10-30: all 35 capability checks passed under WSL with
 stock Lua 5.2.4; all four Python source-integrity tests passed on Windows and
 WSL. Fresh source acquisition and the offline verification path both succeeded.
 Workflow YAML and local documentation file links were also checked. Hosted Fast
-and cross-library execution remain unverified.
+remained unverified at that point.
 
 - [#3](https://github.com/OpenTLV/opentlv-testlab/issues/3): installation, versioned
   cache and fresh OpenTLV package acquisition; consume the committed source pin.
 - [#4](https://github.com/OpenTLV/opentlv-testlab/issues/4): adapters and runner;
-  implement schema projection and complete-root policy above.
+  schema projection and the complete-root policy above are implemented.
 - [#5](https://github.com/OpenTLV/opentlv-testlab/issues/5): deterministic corpus;
   include shared, unsupported, known-difference and inconclusive cases explicitly.
 - [#6](https://github.com/OpenTLV/opentlv-testlab/issues/6): reproducible reports.

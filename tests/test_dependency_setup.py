@@ -11,6 +11,7 @@ import shutil
 import tempfile
 import unittest
 from unittest.mock import patch
+import zipfile
 
 from scripts import setup_lua as setup
 
@@ -131,67 +132,145 @@ class FreshReleaseTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.pin = copy.deepcopy(setup.load_release_pin())
-        name = "opentlv-" + self.pin["rock_version"]
-        self.payloads = {name + ".rockspec": b"rockspec\n", name + ".src.rock": b"rock bytes"}
-        manifest = {"schema": 1, "request": {"repository": self.pin["repository"],
-                    "tag": self.pin["tag"], "version": self.pin["version"],
-                    "lua_sha": self.pin["commit"], "commit": self.pin["commit"],
-                    "core_sha": self.pin["core_commit"]}, "quality": {"records": [{"release_rock": {
-                    "rock": name + ".src.rock", "sha256": sha(self.payloads[name + ".src.rock"]),
-                    "rockspec_sha256": sha(self.payloads[name + ".rockspec"]),
-                    "commit": self.pin["commit"], "core_commit": self.pin["core_commit"],
-                    "tag": self.pin["tag"]}}]}}
-        self.payloads["release-manifest.json"] = json.dumps(manifest).encode()
-        self.pin["assets"] = {name: sha(data) for name, data in self.payloads.items()}
+        self.name = "opentlv-" + self.pin["rock_version"]
+        self.rockspec = b"rockspec\n"
+        self.files = {self.name + ".rockspec": self.rockspec,
+                      "opentlv-lua/lua/opentlv/init.lua": b"return require('opentlv._core')\n",
+                      "opentlv-lua/LICENSE": b"license\n",
+                      "opentlv-lua/cmake/Core.cmake": f"GIT_TAG {self.pin['core_commit']}\n".encode()}
+        self.use_rock(self.files)
+        self.core_output = f"-- OpenTLV version: 0.8.0 (0.8.0-0-{self.pin['core_commit'][:8]}, branch HEAD)"
+        self.installed = dict(self.files)
+        self.metadata = {"binding_version": self.pin["version"], "binding_revision": "",
+                         "release_tag": self.pin["tag"], "dirty": False}
+        self.commands = []
 
-    def fetch(self, url):
-        self.assertTrue(url.startswith("https://github.com/OpenTLV/opentlv-lua/releases/download/v0.3.0/"))
-        return self.payloads[url.rsplit("/", 1)[1]]
+    def use_rock(self, files):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            for name, data in files.items():
+                archive.writestr(name, data)
+        self.rock = buffer.getvalue()
+        self.pin["assets"] = {self.name + ".rockspec": sha(self.rockspec), self.name + ".src.rock": sha(self.rock)}
 
-    def test_two_runs_fetch_every_asset_twice(self):
-        with patch.object(setup, "fetch_bytes", side_effect=self.fetch) as fetch:
-            first = setup.acquire_release(self.root / "run1", self.pin)
-            second = setup.acquire_release(self.root / "run2", self.pin)
-        self.assertEqual(fetch.call_count, 6)
-        self.assertEqual(first, second)
-        self.assertTrue(all(a["sha256"] == self.pin["assets"][a["name"]] for a in second))
+    def run_tool(self, command, *, cwd=None, env=None, log=None, timeout=60):
+        command = [str(part) for part in command]
+        self.commands.append(command)
+        if "download" in command:
+            (cwd / (self.name + ".src.rock")).write_bytes(self.rock)
+        elif "install" in command:
+            tree = Path(next(c for c in command if c.startswith("--tree=")).removeprefix("--tree="))
+            metadata = tree / "lib/luarocks/rocks-5.2/opentlv" / self.pin["rock_version"]
+            (metadata / "doc").mkdir(parents=True)
+            (metadata / "doc/LICENSE").write_bytes(self.installed["opentlv-lua/LICENSE"])
+            (metadata / "doc/LICENSE-Core").write_bytes(b"core license\n")
+            (metadata / (self.name + ".rockspec")).write_bytes(self.installed[self.name + ".rockspec"])
+            (metadata / "lua-version.json").write_text(json.dumps(self.metadata), encoding="utf-8")
+            pure = tree / "share/lua/5.2/opentlv/init.lua"
+            pure.parent.mkdir(parents=True)
+            pure.write_bytes(self.installed["opentlv-lua/lua/opentlv/init.lua"])
+            native = tree / "lib/lua/5.2/opentlv/_core.so"
+            native.parent.mkdir(parents=True)
+            native.write_bytes(b"native")
+            return self.core_output
+        return "tool 1.0"
+
+    def install(self, name="run"):
+        directory = self.root / name
+        directory.mkdir()
+        with patch.object(setup, "run", side_effect=self.run_tool):
+            return setup.install_release(directory, self.pin, "lua", "rocks", Path("/usr"))
+
+    def luarocks_actions(self):
+        return [c[c.index("--only-server=https://luarocks.org") + 1] for c in self.commands
+                if "--only-server=https://luarocks.org" in c]
+
+    def test_committed_pin_selects_only_the_registry(self):
+        pin = setup.load_release_pin()
+        self.assertEqual(pin["server"], "https://luarocks.org")
+        self.assertEqual(set(pin["assets"]), {self.name + ".rockspec", self.name + ".src.rock"})
+        with patch.object(setup.json, "loads", return_value={**pin, "server": "https://github.com"}):
+            with self.assertRaisesRegex(ValueError, "LuaRocks registry"):
+                setup.load_release_pin()
+
+    def test_every_run_downloads_and_installs_through_luarocks(self):
+        first, second = self.install("run1"), self.install("run2")
+        self.assertEqual(self.luarocks_actions(), ["download", "install"] * 2)
+        install = next(c for c in self.commands if "install" in c)
+        self.assertEqual(install[-3:], ["install", "opentlv", self.pin["rock_version"]])
+        self.assertFalse(any(part.endswith(".src.rock") for c in self.commands for part in c))
+        self.assertEqual(first["acquisition"], "fresh")
+        self.assertEqual(second["source"], "https://luarocks.org")
+        self.assertEqual(second["assets"], [{"name": self.name + ".src.rock", "sha256": sha(self.rock),
+                                             "size": len(self.rock)}])
+        self.assertEqual(second["core_commit"], self.pin["core_commit"])
+        self.assertEqual(second["built_core_commit"], self.pin["core_commit"][:8])
+
+    def test_private_config_has_one_server_and_a_new_cache(self):
+        self.install()
+        config = (self.root / "run/luarocks-config.lua").read_text(encoding="utf-8")
+        self.assertIn('rocks_servers = {"https://luarocks.org"}', config)
+        self.assertIn("luarocks-cache", config)
+        self.assertNotIn("github", config)
 
     def test_reusing_download_directory_is_rejected(self):
-        with patch.object(setup, "fetch_bytes", side_effect=self.fetch) as fetch:
-            setup.acquire_release(self.root / "run", self.pin)
+        self.install()
+        with patch.object(setup, "run", side_effect=self.run_tool) as run:
             with self.assertRaises(FileExistsError):
-                setup.acquire_release(self.root / "run", self.pin)
-        self.assertEqual(fetch.call_count, 3)
-
-    def test_corrupted_asset_fails_before_installation(self):
-        with patch.object(setup, "fetch_bytes", return_value=b"modified release"), \
-                patch.object(setup, "run") as run:
-            with self.assertRaisesRegex(ValueError, "Release SHA-256 mismatch"):
-                setup.install_release(self.root, self.pin, "lua", "rocks", Path("/usr"))
+                setup.acquire_release(self.root / "run/downloads", self.pin, ["rocks"], {}, None)
         run.assert_not_called()
 
-    def test_missing_asset_fails_without_local_fallback(self):
-        with patch.object(setup, "fetch_bytes", side_effect=OSError("not found")):
-            with self.assertRaises(OSError):
-                setup.acquire_release(self.root / "run", self.pin)
+    def test_changed_registry_bytes_fail_before_installation(self):
+        self.pin["assets"][self.name + ".src.rock"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "Registry SHA-256 mismatch"):
+            self.install()
+        self.assertEqual(self.luarocks_actions(), ["download"])
 
-    def test_manifest_identity_must_match_pin_even_with_valid_hash(self):
-        manifest = json.loads(self.payloads["release-manifest.json"])
-        manifest["request"]["commit"] = "b" * 40
-        self.payloads["release-manifest.json"] = json.dumps(manifest).encode()
-        self.pin["assets"]["release-manifest.json"] = sha(self.payloads["release-manifest.json"])
-        with patch.object(setup, "fetch_bytes", side_effect=self.fetch):
-            with self.assertRaisesRegex(ValueError, "manifest identity mismatch"):
-                setup.acquire_release(self.root / "run", self.pin)
+    def test_failed_download_has_no_other_source(self):
+        with patch.object(setup, "run", side_effect=ValueError("no results")) as run:
+            (self.root / "run").mkdir()
+            with self.assertRaisesRegex(ValueError, "no results"):
+                setup.install_release(self.root / "run", self.pin, "lua", "rocks", Path("/usr"))
+        self.assertEqual(run.call_count, 1)
 
-    def test_rock_provenance_must_match_manifest(self):
-        manifest = json.loads(self.payloads["release-manifest.json"])
-        manifest["quality"]["records"][0]["release_rock"]["core_commit"] = "b" * 40
-        self.payloads["release-manifest.json"] = json.dumps(manifest).encode()
-        self.pin["assets"]["release-manifest.json"] = sha(self.payloads["release-manifest.json"])
-        with patch.object(setup, "fetch_bytes", side_effect=self.fetch):
-            with self.assertRaisesRegex(ValueError, "rock provenance mismatch"):
-                setup.acquire_release(self.root / "run", self.pin)
+    def test_download_without_the_source_rock_fails(self):
+        def empty(command, *, cwd=None, env=None, log=None, timeout=60):
+            return ""
+        (self.root / "run").mkdir()
+        with patch.object(setup, "run", side_effect=empty):
+            with self.assertRaisesRegex(ValueError, "did not download"):
+                setup.install_release(self.root / "run", self.pin, "lua", "rocks", Path("/usr"))
+
+    def test_rock_contents_must_match_the_pin_before_installation(self):
+        for name, data, message in [(self.name + ".rockspec", b"other\n", "different rockspec"),
+                                    ("opentlv-lua/cmake/Core.cmake", b"GIT_TAG main\n", "different Core")]:
+            with self.subTest(message=message):
+                self.commands.clear()
+                self.use_rock({**self.files, name: data})
+                self.pin["assets"][self.name + ".rockspec"] = sha(self.rockspec)
+                with self.assertRaisesRegex(ValueError, message):
+                    self.install(message.replace(" ", "-"))
+                self.assertEqual(self.luarocks_actions(), ["download"])
+
+    def test_built_core_must_match_the_pin(self):
+        for output in ("-- OpenTLV version: 0.8.0 (0.8.0-0-deadbeef, branch HEAD)", "no version line"):
+            with self.subTest(output=output):
+                self.core_output = output
+                with self.assertRaisesRegex(ValueError, "different Core"):
+                    self.install("core-" + str(len(output)))
+
+    def test_installed_payload_must_match_the_verified_rock(self):
+        for name, label in [("opentlv-lua/lua/opentlv/init.lua", "pure"), (self.name + ".rockspec", "spec"),
+                            ("opentlv-lua/LICENSE", "license")]:
+            with self.subTest(name=name):
+                self.installed = {**self.files, name: b"changed\n"}
+                with self.assertRaisesRegex(ValueError, "Installed payload differs"):
+                    self.install(label)
+
+    def test_installed_metadata_must_match_the_release(self):
+        self.metadata["release_tag"] = "v9.9.9"
+        with self.assertRaisesRegex(ValueError, "Installed version mismatch"):
+            self.install()
 
 
 class SetupFailureTests(unittest.TestCase):
