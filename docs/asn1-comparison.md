@@ -111,12 +111,13 @@ refer to `tests/asn1_capabilities.lua`; those checks characterize the external p
 | Truncated tag/length/value, truncated child | Typed decode under `pcall` | Final-input BER read and recursive descent | Shared rejection only; empty input must be classified as missing required root by adapter (`truncated-*`, `empty-input`) |
 | Extra complete root / trailing bytes | Typed decode rejects full-input length mismatch | Reader accepts streams; `read` consumes first only | Shared rejection only after explicit one-root consumption policy (`trailing-element`) |
 | Length boundary 127/128 and 255/256 | Long-length code exists but has reversed shift arguments | BER supports long definite lengths | Known external difference; exclude all long-form lengths from initial pass/mismatch gate (`known-difference-long-length-*`) |
+| Truncated long-form header, reserved length `ff` | `04 81` and `04 ff` decode as empty; `04 82 01` is rejected | Rejected as truncated or invalid length | Excluded with the other long forms; no malformed-input verdict from disagreement (`truncated-long-header`, `ambiguous-truncated-long-header`, `ambiguous-reserved-length`) |
 | High-tag-number form, tag >=31 | Explicit assertions reject it | BER supports high tags | Unsupported external capability (`high-tag`, `high-tag-encode`) |
 | Application / private class | Tag builder maps only universal/context | BER accepts all classes | Unsupported (`application-private-classes`) |
 | Indefinite length / EOC | `split` rejects length `80` | BER supports constructed indefinite framing | Unsupported; no differential malformed-input verdict from disagreement (`indefinite-length`, `indefinite-constructed`) |
 | Constructed OCTET/BIT STRING | Primitive tag expected; no fragment concatenation | BER tree framing supported | Unsupported external typed operation (`constructed-octets`) |
 | Negative INTEGER / large arbitrary precision | Negative values explicitly rejected; Lua number accumulation | Raw BER bytes, optional number codecs | Unsupported negative values; large-number semantic comparison deferred (`negative-integer`) |
-| INTEGER zero encoding | Decoder accepts `02 01 00`; encoder calls `bit32.band(nil, ...)` | Can encode the raw value `00` | Known external difference; exclude zero encoding (`known-difference-integer-zero`) |
+| INTEGER zero encoding | Decoder accepts `02 01 00`; encoder calls `bit32.band(nil, ...)` | Can encode the raw value `00` | Decoding `02 01 00` is shared; known external difference, so exclude zero encoding (`known-difference-integer-zero`) |
 | NULL, OID, REAL, SET / SET OF, ASN.1 time types | No corresponding core type constructors | Can frame their raw tags/values | Unsupported typed comparison; generic framing is not equivalent semantic support |
 | Nonminimal lengths/integers, noncanonical BOOLEAN, BIT padding, invalid IA5 | No reliable general validity contract; typed information can be lost | BER framing often accepts opaque values | Inconclusive for initial differential verdict; preserve bytes and explain ambiguity |
 | Invalid BOOLEAN value length | `01 00` returns true; `01 02 00 ff` returns false | Raw TLV framing succeeds | No shared ASN.1 semantic validation oracle (`semantic-boolean-validation`) |
@@ -160,7 +161,7 @@ updating the pin requires revisiting the matrix, not silently accepting a fork
 or local fixes. Python tests verify that changed/missing source is rejected.
 
 Fast now runs that audit on the cached installed external library, alongside
-fresh OpenTLV package setup and the differential seed fixtures. Hosted CI evidence
+fresh OpenTLV package setup, the differential seed fixtures and the BER corpus. Hosted CI evidence
 must be checked on the PR; local execution alone does not fulfill the hosted Fast
 gate. The standalone scope audit does not acquire OpenTLV or execute the runner.
 
@@ -174,11 +175,11 @@ remained unverified at that point.
   cache and fresh OpenTLV package acquisition; consume the committed source pin.
 - [#4](https://github.com/OpenTLV/opentlv-testlab/issues/4): adapters and runner;
   schema projection and the complete-root policy above are implemented.
-- [#5](https://github.com/OpenTLV/opentlv-testlab/issues/5): deterministic corpus;
-  include shared, unsupported, known-difference and inconclusive cases explicitly.
+- [#5](https://github.com/OpenTLV/opentlv-testlab/issues/5): deterministic
+  [BER corpus](differential-runner.md#ber-corpus) with shared, unsupported,
+  known-difference and inconclusive cases declared explicitly.
 - [#6](https://github.com/OpenTLV/opentlv-testlab/issues/6): reproducible reports.
-- [#7](https://github.com/OpenTLV/opentlv-testlab/issues/7): extend Fast to the
-  actual differential suite and add the manual/full matrix.
+- [#7](https://github.com/OpenTLV/opentlv-testlab/issues/7): add the manual/full matrix.
 - [#8](https://github.com/OpenTLV/opentlv-testlab/issues/8): end-to-end workflow docs.
 
 [source]: https://github.com/kunkku/lua-asn1/blob/ac0c68c796143d1698ec88790bfd8b405a9d3f64/asn1/init.lua
