@@ -42,14 +42,28 @@ jobs:
       - name: Verify external cache without network acquisition
         run: python3 scripts/setup_lua.py --lua lua5.2 --external-only --offline
       - name: Compare both libraries on the seed fixtures
-        run: python3 scripts/run_differential.py
+        run: >-
+          python3 scripts/run_differential.py
+          --output build/differential-reports/seed.json --report build/differential-reports/seed.md
       - name: Compare both libraries on the BER corpus
-        run: python3 scripts/run_differential.py --fixtures differential/fixtures/asn1-ber.json
-      - name: Confirm a real library difference is reported as a mismatch
+        run: >-
+          python3 scripts/run_differential.py --fixtures differential/fixtures/asn1-ber.json
+          --output build/differential-reports/asn1-ber.json --report build/differential-reports/asn1-ber.md
+      - name: Confirm a real library difference yields a reproducible mismatch report
         run: |
           status=0
-          python3 scripts/run_differential.py --fixtures tests/fixtures/differential_mismatch.json || status=$?
+          python3 scripts/run_differential.py --fixtures tests/fixtures/differential_mismatch.json \
+            --output build/differential-reports/mismatch-probe.json \
+            --report build/differential-reports/mismatch-probe.md || status=$?
           test "$status" -eq 3
+          python3 scripts/check_report.py build/differential-reports/mismatch-probe.json
+      - name: Upload differential reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: differential-reports
+          path: build/differential-reports/
+          if-no-files-found: warn
       - name: Upload dependency provenance and logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

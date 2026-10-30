@@ -178,7 +178,8 @@ remained unverified at that point.
 - [#5](https://github.com/OpenTLV/opentlv-testlab/issues/5): deterministic
   [BER corpus](differential-runner.md#ber-corpus) with shared, unsupported,
   known-difference and inconclusive cases declared explicitly.
-- [#6](https://github.com/OpenTLV/opentlv-testlab/issues/6): reproducible reports.
+- [#6](https://github.com/OpenTLV/opentlv-testlab/issues/6): reproducible
+  [mismatch reports](differential-runner.md#mismatch-reports) and CI artifacts.
 - [#7](https://github.com/OpenTLV/opentlv-testlab/issues/7): add the manual/full matrix.
 - [#8](https://github.com/OpenTLV/opentlv-testlab/issues/8): end-to-end workflow docs.
 
