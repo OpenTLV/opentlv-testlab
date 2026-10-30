@@ -16,6 +16,7 @@ Issue #3 adds reproducible dependency setup, an external cache and fresh OpenTLV
 release installation. Issue #4 adds the [differential runner](docs/differential-runner.md)
 and its two library adapters. Issue #5 adds the [BER fixture corpus](docs/differential-runner.md#ber-corpus).
 Issue #6 adds [mismatch reports](docs/differential-runner.md#mismatch-reports).
+Issue #7 adds the [manual extended suite](docs/ci.md#extended-suite).
 External comparison dependencies belong only in TestLab.
 
 ## Set up both Lua dependencies
@@ -75,7 +76,21 @@ The `Fast` workflow runs the Python tests and full setup on Ubuntu with Lua 5.2,
 restores only the exact external cache key, then verifies an offline cache hit. It
 runs the seed fixtures and the BER corpus, requires the deliberate mismatch probe to
 exit with code 3 and its report to reproduce itself, and uploads differential reports,
-provenance and logs. The manual suite is planned in issue #7.
+provenance and logs.
+
+## Run the extended suite
+
+The `Extended` workflow is started by hand from the **Actions** tab and is not required
+for a pull request. On x86-64 and arm64 Ubuntu, it starts without a cache, sets up twice,
+checks that repeated runs and a second install give the same results, and uploads a
+summary, reports, provenance and logs. Run the same suite locally with:
+
+```sh
+python3 scripts/run_extended.py --lua lua5.2
+```
+
+See [Fast gate and extended suite](docs/ci.md) for what each one checks and how to read
+the result.
 
 ## License
 

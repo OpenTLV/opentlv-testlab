@@ -180,7 +180,8 @@ remained unverified at that point.
   known-difference and inconclusive cases declared explicitly.
 - [#6](https://github.com/OpenTLV/opentlv-testlab/issues/6): reproducible
   [mismatch reports](differential-runner.md#mismatch-reports) and CI artifacts.
-- [#7](https://github.com/OpenTLV/opentlv-testlab/issues/7): add the manual/full matrix.
+- [#7](https://github.com/OpenTLV/opentlv-testlab/issues/7): the
+  [Fast gate and manual extended suite](ci.md).
 - [#8](https://github.com/OpenTLV/opentlv-testlab/issues/8): end-to-end workflow docs.
 
 [source]: https://github.com/kunkku/lua-asn1/blob/ac0c68c796143d1698ec88790bfd8b405a9d3f64/asn1/init.lua
