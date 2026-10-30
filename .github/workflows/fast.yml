@@ -14,16 +14,40 @@ permissions:
 
 jobs:
   capabilities:
-    name: ASN.1 capability audit
+    name: Lua dependencies and capability audit
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - name: Install audit runtime
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y lua5.2
-      - name: Check source verification
+          sudo apt-get install --no-install-recommends -y lua5.2 liblua5.2-dev luarocks cmake build-essential git unzip zip
+      - name: Check dependency policies
         run: python3 -m unittest discover -s tests -v
-      - name: Verify pinned upstream capabilities
-        run: python3 scripts/check_asn1.py --download --lua lua5.2
+      - name: Identify external cache
+        id: external-key
+        run: |
+          key=$(python3 scripts/setup_lua.py --print-cache-key --lua lua5.2)
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+      - name: Restore exact external dependency cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: build/dependency-cache/${{ steps.external-key.outputs.key }}
+          key: ${{ steps.external-key.outputs.key }}
+      - name: Stage external dependency and freshly install OpenTLV
+        run: python3 scripts/setup_lua.py --lua lua5.2
+      - name: Verify external cache without network acquisition
+        run: python3 scripts/setup_lua.py --lua lua5.2 --external-only --offline
+      - name: Upload dependency provenance and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dependency-provenance
+          path: |
+            build/dependency-runs/*/provenance.json
+            build/dependency-runs/*/failure.json
+            build/dependency-runs/*/*.log
+          if-no-files-found: warn
