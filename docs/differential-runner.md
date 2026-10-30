@@ -241,11 +241,68 @@ check to exist. A disagreement on a declared fixture is retained in the `--outpu
 but never decides the run: `length-reserved-ff`, for example, is accepted by lua-asn1 and
 rejected by OpenTLV.
 
-To add a fixture, write its bytes and expectation by hand, independently of either
-library, then run the command above and read the observations with `--output`. If the
-libraries differ on a `shared` fixture, look into the difference; do not reclassify the
-fixture just to pass the run. Only a documented limitation or missing contract justifies
-declaring it instead.
+## Add a fixture
+
+Add coverage to the BER corpus. The seed corpus only exercises each adapter path, and the
+mismatch probe must keep failing. Write the bytes and expectation by hand, independently
+of either library, and never copy an expectation from a library's output.
+
+1. Append an entry to the `fixtures` array. This one is a `shared` fixture:
+
+   ```json
+   {
+     "id": "sequence-boolean-integer",
+     "category": "constructed",
+     "description": "SEQUENCE of a BOOLEAN and an INTEGER",
+     "operation": "decode",
+     "wire": "30 06 01 01 ff 02 01 05",
+     "schema": {"type": "sequence", "fields": [
+       {"name": "flag", "schema": {"type": "boolean"}},
+       {"name": "count", "schema": {"type": "integer"}}
+     ]},
+     "classification": "shared",
+     "expected": {"result": "accept", "tree": {
+       "identifier": "30", "length": 6, "length_bytes": "06", "children": [
+         {"identifier": "01", "length": 1, "length_bytes": "01", "value": "ff"},
+         {"identifier": "02", "length": 1, "length_bytes": "01", "value": "05"}
+       ]
+     }}
+   }
+   ```
+
+2. Choose its classification before running it, not from which libraries agree:
+
+   | Classification | Use it when | The entry needs |
+   | --- | --- | --- |
+   | `shared` | The wire fits the [limits below](#fixture-format), both libraries document the operation and a verdict is fair | `expected` |
+   | `unsupported` | A library lacks the operation or has a known limitation | `reason`, without `expected` |
+   | `inconclusive` | Semantics, canonical form or a validation contract leave no fair verdict | `reason`, without `expected` |
+
+   End a `reason` with the audit check that demonstrates it in parentheses, where one exists,
+   and add a check to `tests/asn1_capabilities.lua` if a new limitation needs one.
+
+3. Validate the corpus, then run the new fixture and read both observations:
+
+   ```sh
+   python3 -m unittest discover -s tests
+   python3 scripts/run_differential.py --fixtures differential/fixtures/asn1-ber.json --fixture sequence-boolean-integer --output build/new.json
+   ```
+
+   A run failure at this step usually means the fixture is wrong. For example, a wrong length
+   gives `Expected tree does not describe the wire` and exit code 1. The tests also reject a
+   duplicate id, a duplicate wire and schema pair, and a cited check that does not exist.
+
+4. Run the whole corpus and update the [category table](#ber-corpus) if the fixture adds
+   a new kind of case. Add a changelog entry to the pull request; Fast then runs the fixture
+   through both real libraries.
+
+If the libraries differ on a `shared` fixture, follow the [mismatch steps](#mismatch-reports);
+do not reclassify the fixture just to pass the run. Only a documented limitation or
+missing contract justifies declaring it instead.
+
+A new corpus file also needs `"schema": 1`, a `.license` file like its neighbors and its own
+Fast step. Add `reproduction` metadata to require a `category` and `description` on each
+fixture and to tie the corpus to the pins.
 
 ## Limits
 
@@ -272,12 +329,11 @@ installation from luarocks.org and the cached lua-asn1 v2.2.1. The seed fixtures
 7 unsupported and 5 inconclusive, and the mismatch probe gave 2 mismatches and exit
 code 3. Real-library runs also confirmed that inherited Lua settings are ignored,
 that neither adapter's path can load the other library, and that two runs produce
-identical reports. Hosted Fast remains to be verified on the PR.
+identical reports.
 
 Local verification of the BER corpus on 2026-10-30 used the same configuration and
 freshly installed OpenTLV Lua v0.3.0. It gave 102 pass, 0 mismatch, 43 unsupported and
-24 inconclusive with exit code 0, and two runs produced identical reports. Hosted Fast
-remains to be verified on the PR.
+24 inconclusive with exit code 0, and two runs produced identical reports.
 
 Local verification of the reports on 2026-10-30 used the same configuration. The mismatch
 probe's report gave exit code 3, named lua-asn1 for both mismatches, and `check_report.py`
@@ -285,7 +341,12 @@ reproduced both with identical results. Two BER runs produced byte-identical JSO
 Markdown reports. A failure injected at adapter startup wrote a failure report. A crash at
 a specific fixture was exercised only with stand-in processes. A checkout shared with
 Windows shows as modified under WSL because of line endings, so those local reports carry
-the uncommitted-changes warning. Hosted Fast and its artifact upload remain to be verified
-on the PR.
+the uncommitted-changes warning.
+
+The [Add a fixture](#add-a-fixture) example was run on 2026-10-30 from a clean clone. It
+passed alone, took the BER corpus to 103 pass, and a wrong length gave exit code 1. It was
+not committed, so the corpus counts above stand.
+
+Hosted [Fast and Extended](ci.md#verification) passed on the same corpora on 2026-10-30.
 
 [source]: https://github.com/OpenTLV/opentlv-lua/blob/v0.3.0/docs/api.md#source-preservation

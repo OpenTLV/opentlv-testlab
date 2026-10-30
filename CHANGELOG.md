@@ -13,8 +13,18 @@
   setup, verifying the downloaded source rock, built Core commit and installed files
   against the pin. External libraries remain cached. (#4)
 
+### Fixed
+
+- Correct the capability check count, a broken dependency-setup link and the verification
+  notes that still described hosted Fast and Extended as pending. (#8)
+
 ### Added
 
+- Contributor documentation: the README now takes a contributor from installation to a
+  reproduced comparison, and covers the commands, supported BER subset, fixture contribution,
+  result interpretation, version and cache policy, CI and limits. The guides add step-by-step
+  fixture and pin-change procedures, and a new test checks documented links, commands, the
+  fixture example and corpus totals. (#8)
 - Manual `Extended` workflow and `scripts/run_extended.py`: on x86-64 and arm64 Ubuntu it
   runs a cold and a repeated setup, an offline cache check, the standalone capability audit,
   both corpora with repeat and second-install comparisons and the mismatch probe, and

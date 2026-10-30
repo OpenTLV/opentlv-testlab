@@ -132,10 +132,38 @@ between them; the installed files are checked against the verified rock to narro
 The compiled module has no pin. Setup does not repeat the publisher's Full release
 gate or verify Sigstore attestations.
 
+## Change a pin
+
+A pin defines what is being compared, so it changes only in a reviewed pull request. Never
+patch a library or switch to a fork or a mirror to make a run pass. The committed BER corpus
+names both versions, and a run fails until it matches the pins.
+
+To update lua-asn1:
+
+1. Set the version, tag, commit and all five file digests in
+   [`dependencies/lua-asn1.json`](../dependencies/lua-asn1.json).
+2. Run `python3 scripts/check_asn1.py --download --lua lua5.2`. The audit fails if an
+   observed behavior changed; revisit the [comparison matrix](asn1-comparison.md#concrete-comparison-matrix)
+   and the fixtures that cite that check instead of only editing the check.
+3. Set the version in the `reproduction` metadata of
+   [`asn1-ber.json`](../differential/fixtures/asn1-ber.json), then run both corpora. The
+   changed pin selects a new cache entry without further action.
+
+To update OpenTLV Lua:
+
+1. Set the version, tag, commit, Core commit, release id, rock version and both asset digests
+   in [`dependencies/opentlv-lua.json`](../dependencies/opentlv-lua.json), checked against
+   both the registry and the release.
+2. Run `python3 scripts/setup_lua.py --lua lua5.2`. It rejects a rock or Core commit that
+   differs from the pin.
+3. Set the version in the corpus `reproduction` metadata, run both corpora and investigate
+   each new mismatch. Update the version named in the README and in this page.
+
 ## Run records and downstream use
 
 Runs default to `build/dependency-runs/<uuid>`; override this with `--runs-dir`.
-Keep runs outside the external cache. Each run retains:
+Keep runs outside the external cache. Nothing removes old runs, so delete that directory
+when you no longer need them; the next setup installs OpenTLV again. Each run retains:
 
 - `provenance.json`: status, timestamps, runtime/platform, cache key and hit/miss,
   exact source pins, the registry, source-rock hash and size, installed-file hashes,
@@ -172,9 +200,9 @@ WSL, Lua 5.2.4 and CMake 3.28.3 completed full setups with LuaRocks 3.8.0, the v
 Ubuntu 24.04 packages but built here from upstream source, and with 3.11.1. The first
 external cache miss became a hit on the second setup, while each run installed OpenTLV
 v0.3.0 from luarocks.org with its own LuaRocks cache and passed the native package
-smoke check. Offline external cache hits passed all 35 capability checks. A failing
-`luarocks download` stopped setup after one attempt, with no fallback. Hosted Fast
-remains to be verified on the PR.
+smoke check. Offline external cache hits passed all 38 capability checks. A failing
+`luarocks download` stopped setup after one attempt, with no fallback. Hosted
+[Fast and Extended](ci.md#verification) passed on 2026-10-30, on Ubuntu 24.04 packages.
 
 [registry]: https://luarocks.org/modules/marekcingel/opentlv
 [release]: https://github.com/OpenTLV/opentlv-lua/releases/tag/v0.3.0

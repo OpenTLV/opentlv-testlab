@@ -55,7 +55,7 @@ does yet, and lua-asn1 under a new cache key.
 ### Start it
 
 In GitHub, open **Actions**, select **Extended**, choose **Run workflow** and pick a branch.
-It takes no inputs. A branch can be selected once `extended.yml` is on `main`.
+It takes no inputs.
 
 A pull request that changes `extended.yml` or `run_extended.py` also runs the suite,
 because GitHub cannot start a workflow by hand before it reaches the default branch. Do not
@@ -120,4 +120,10 @@ non-empty output directory gave exit code 2, and a missing interpreter gave exit
 a summary naming `cold-setup`. Stand-in scripts in the Python tests exercise the mismatch,
 unstable-report and install-dependent paths.
 
-Hosted runs, the arm64 runner and the artifact upload remain to be verified on the PR.
+Hosted runs on 2026-10-30 passed on the [`Extended` pull request run][extended-run] for both
+x86-64 and arm64, each uploading its `extended-RUNNER` artifact, and on the [`Fast` run on
+`main`][fast-run], which uploaded `differential-reports` and `dependency-provenance`. Starting
+`Extended` by hand from **Actions** has not been exercised yet.
+
+[extended-run]: https://github.com/OpenTLV/opentlv-testlab/actions/runs/41062388886
+[fast-run]: https://github.com/OpenTLV/opentlv-testlab/actions/runs/41062607319

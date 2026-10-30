@@ -66,7 +66,7 @@ OpenTLV API inspection is tied to Lua commit
 `adabdbe9b85187ff5db877142b26d33d20a5917e` and its Core v0.8.0 pin
 `345c77acb29266036df5f27d04ce315bb61853cc`; see its [API guide][lua-api].
 This is a source reference for the matrix, not a published-package acquisition
-result. The [dependency setup](dependencies.md#fresh-opentlv-release-package)
+result. The [dependency setup](dependencies.md#fresh-opentlv-package-from-luarocks)
 separately pins and freshly acquires the OpenTLV package under test.
 
 Each comparable fixture must carry its ASN.1 schema. Initially require one
@@ -152,37 +152,22 @@ A crash, timeout, missing dependency or wrong source hash is an audit/run failur
 never an `unsupported` result that turns CI green. The runner distinguishes
 resource-limit failures from BER rejection.
 
-## Verification and follow-up ownership
+## Verification
 
 Run the [README commands](../README.md#run-the-capability-audit) to verify the
 pin and execute the characterization checks, including expected upstream
 limitations. The audit intentionally fails if those observations change:
-updating the pin requires revisiting the matrix, not silently accepting a fork
-or local fixes. Python tests verify that changed/missing source is rejected.
+[updating the pin](dependencies.md#change-a-pin) requires revisiting the matrix, not
+silently accepting a fork or local fixes. Python tests verify that changed/missing
+source is rejected.
 
-Fast now runs that audit on the cached installed external library, alongside
-fresh OpenTLV package setup, the differential seed fixtures and the BER corpus. Hosted CI evidence
-must be checked on the PR; local execution alone does not fulfill the hosted Fast
-gate. The standalone scope audit does not acquire OpenTLV or execute the runner.
+[Fast](ci.md#fast-gate) runs that audit on the cached installed external library, alongside
+fresh OpenTLV package setup, the differential seed fixtures and the BER corpus. The
+standalone scope audit does not acquire OpenTLV or execute the runner.
 
-Local evidence on 2026-10-30: all 35 capability checks passed under WSL with
-stock Lua 5.2.4; all four Python source-integrity tests passed on Windows and
-WSL. Fresh source acquisition and the offline verification path both succeeded.
-Workflow YAML and local documentation file links were also checked. Hosted Fast
-remained unverified at that point.
-
-- [#3](https://github.com/OpenTLV/opentlv-testlab/issues/3): installation, versioned
-  cache and fresh OpenTLV package acquisition; consume the committed source pin.
-- [#4](https://github.com/OpenTLV/opentlv-testlab/issues/4): adapters and runner;
-  schema projection and the complete-root policy above are implemented.
-- [#5](https://github.com/OpenTLV/opentlv-testlab/issues/5): deterministic
-  [BER corpus](differential-runner.md#ber-corpus) with shared, unsupported,
-  known-difference and inconclusive cases declared explicitly.
-- [#6](https://github.com/OpenTLV/opentlv-testlab/issues/6): reproducible
-  [mismatch reports](differential-runner.md#mismatch-reports) and CI artifacts.
-- [#7](https://github.com/OpenTLV/opentlv-testlab/issues/7): the
-  [Fast gate and manual extended suite](ci.md).
-- [#8](https://github.com/OpenTLV/opentlv-testlab/issues/8): end-to-end workflow docs.
+Local evidence on 2026-10-30: all 38 capability checks passed under WSL with
+stock Lua 5.2.4, from a fresh source download and again offline. The Python
+source-integrity tests passed on Windows and WSL.
 
 [source]: https://github.com/kunkku/lua-asn1/blob/ac0c68c796143d1698ec88790bfd8b405a9d3f64/asn1/init.lua
 [license]: https://github.com/kunkku/lua-asn1/blob/ac0c68c796143d1698ec88790bfd8b405a9d3f64/LICENSE
