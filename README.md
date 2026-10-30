@@ -12,9 +12,28 @@ exact version, license, runtime requirements, shared operations and exclusions.
 The machine-readable pin is [dependencies/lua-asn1.json](dependencies/lua-asn1.json).
 
 Issue #2 establishes this scope and an executable upstream capability audit.
-The differential runner, package installation/cache, fixture corpus and mismatch
-reporting are follow-up work in [epic #1](https://github.com/OpenTLV/opentlv-testlab/issues/1).
+Issue #3 adds reproducible dependency setup, an external cache and fresh OpenTLV
+release installation. The differential runner, fixture corpus and mismatch
+reporting remain follow-up work in [epic #1](https://github.com/OpenTLV/opentlv-testlab/issues/1).
 External comparison dependencies belong only in TestLab.
+
+## Set up both Lua dependencies
+
+The initial supported setup is Linux/WSL with Lua 5.2 and its development headers,
+LuaRocks, GNU Make, a C compiler, CMake 3.24+, Git, zip and unzip. On Ubuntu 24.04:
+
+```sh
+sudo apt-get install lua5.2 liblua5.2-dev luarocks cmake build-essential git zip unzip
+python3 -m unittest discover -s tests -v
+python3 scripts/setup_lua.py --lua lua5.2
+```
+
+This stages the pinned external library using its upstream Makefile. It then
+**freshly downloads and installs OpenTLV Lua v0.3.0** from its published source
+rock into a unique run directory, verifies both installed libraries and records
+paths, versions, hashes and provenance. Only the external library is cached.
+See [dependency setup](docs/dependencies.md) for cache keys, offline verification,
+custom tool paths, receipts and supported-platform limits.
 
 ## Run the capability audit
 
@@ -34,9 +53,10 @@ they recheck every file before running Lua. Use `--source-dir PATH` to audit an
 existing copy. A missing or changed file, failed capability assertion, wrong Lua
 runtime or timeout fails the command.
 
-The `Fast` workflow runs these same checks on Ubuntu with Lua 5.2. This is the
-scope audit gate, not yet the end-to-end differential gate planned in issue #7.
-It deliberately has no dependency cache yet; issue #3 owns that policy.
+The `Fast` workflow runs the dependency tests and full setup on Ubuntu with Lua
+5.2, restores only the exact external cache key, then verifies an offline cache
+hit. It uploads provenance and logs. It does not yet run the differential gate
+planned in issue #7.
 
 ## License
 

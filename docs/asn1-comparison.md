@@ -27,8 +27,8 @@ Primary evidence: the [tagged source][source], [license][license], and
 or runtime support matrix is present at this revision. LuaRocks searches for
 `asn1` and `asn1-lua`, including non-root modules, returned no package on the
 verification date. Therefore there is no verified `luarocks install asn1-lua`
-command or rock revision to pin. Issue #3 should use a staged source installation
-unless it independently verifies a supported package distribution.
+command or rock revision to pin. The [dependency setup](dependencies.md) uses
+the upstream Makefile for a staged source installation.
 
 The audit fetches commit-addressed files and verifies their bytes without
 installing anything globally. It preserves `LICENSE` and every source notice.
@@ -66,7 +66,8 @@ OpenTLV API inspection is tied to Lua commit
 `adabdbe9b85187ff5db877142b26d33d20a5917e` and its Core v0.8.0 pin
 `345c77acb29266036df5f27d04ce315bb61853cc`; see its [API guide][lua-api].
 This is a source reference for the matrix, not a published-package acquisition
-result. Issue #3 must separately select and record the OpenTLV package under test.
+result. The [dependency setup](dependencies.md#fresh-opentlv-release-package)
+separately pins and freshly acquires the OpenTLV package under test.
 
 Each comparable fixture must carry its ASN.1 schema. Initially require one
 complete root, short-form definite length **0-127 at every level**, low tag
@@ -154,10 +155,10 @@ limitations. The audit intentionally fails if those observations change:
 updating the pin requires revisiting the matrix, not silently accepting a fork
 or local fixes. Python tests verify that changed/missing source is rejected.
 
-The initial Fast workflow runs that narrow audit. Hosted CI evidence must be
-checked on the PR; local execution alone does not fulfill the hosted Fast gate.
-No OpenTLV package has been freshly acquired by this audit and it does not
-execute the future differential runner.
+Fast now runs that audit on the cached installed external library, alongside
+fresh OpenTLV package setup. Hosted CI evidence must be checked on the PR; local
+execution alone does not fulfill the hosted Fast gate. The standalone scope
+audit does not acquire OpenTLV or execute the future differential runner.
 
 Local evidence on 2026-10-30: all 35 capability checks passed under WSL with
 stock Lua 5.2.4; all four Python source-integrity tests passed on Windows and
