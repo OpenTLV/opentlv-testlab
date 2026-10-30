@@ -136,9 +136,9 @@ Keep runs outside the external cache. Each run retains:
 Only `status: "passed"` represents successful setup. External-only receipts have
 no `opentlv` section. The `environment` object supplies explicit `LUA_PATH` and
 `LUA_CPATH` for the two installed libraries without default/fallback path suffixes.
-The future runner should clear inherited `LUA_INIT*` and versioned `LUA_PATH*` /
-`LUA_CPATH*` overrides before using it. Paths are local to that run; a receipt
-copied as a CI artifact does not make its installed files portable or persistent.
+The [differential runner](differential-runner.md) clears inherited `LUA_*` overrides
+and gives each adapter only its own library's paths. Paths are local to that run; a
+receipt copied as a CI artifact does not make its installed files portable or persistent.
 
 ## Fast CI and verification
 
@@ -151,7 +151,7 @@ No fuzzy restore keys permit a different configuration to masquerade as a hit.
 Tests cover cold/warm behavior, key invalidation, offline misses, corruption,
 extra/missing installed files, incomplete downloads/installs, fresh release
 acquisition on repeated runs and release integrity/provenance failures. The
-setup smoke check is not the differential runner planned in issue #4. Local
+setup smoke check is not the [differential runner](differential-runner.md). Local
 success and a committed Fast workflow do not establish hosted CI success.
 
 Local verification on 2026-10-30 passed 21 Python tests on Windows and WSL.

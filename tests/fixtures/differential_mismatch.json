@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "fixtures": [
+    {
+      "id": "boolean-noncanonical-as-shared",
+      "operation": "decode",
+      "wire": "01 01 01",
+      "schema": {
+        "type": "boolean"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "01",
+          "length": 1,
+          "length_bytes": "01",
+          "value": "01"
+        }
+      }
+    },
+    {
+      "id": "integer-nonminimal-as-shared",
+      "operation": "decode",
+      "wire": "02 02 00 01",
+      "schema": {
+        "type": "integer"
+      },
+      "classification": "shared",
+      "expected": {
+        "result": "accept",
+        "tree": {
+          "identifier": "02",
+          "length": 2,
+          "length_bytes": "02",
+          "value": "0001"
+        }
+      }
+    }
+  ]
+}

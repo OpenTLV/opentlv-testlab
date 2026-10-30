@@ -41,6 +41,13 @@ jobs:
         run: python3 scripts/setup_lua.py --lua lua5.2
       - name: Verify external cache without network acquisition
         run: python3 scripts/setup_lua.py --lua lua5.2 --external-only --offline
+      - name: Compare both libraries on the seed fixtures
+        run: python3 scripts/run_differential.py
+      - name: Confirm a real library difference is reported as a mismatch
+        run: |
+          status=0
+          python3 scripts/run_differential.py --fixtures tests/fixtures/differential_mismatch.json || status=$?
+          test "$status" -eq 3
       - name: Upload dependency provenance and logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

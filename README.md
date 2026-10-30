@@ -13,8 +13,9 @@ The machine-readable pin is [dependencies/lua-asn1.json](dependencies/lua-asn1.j
 
 Issue #2 establishes this scope and an executable upstream capability audit.
 Issue #3 adds reproducible dependency setup, an external cache and fresh OpenTLV
-release installation. The differential runner, fixture corpus and mismatch
-reporting remain follow-up work in [epic #1](https://github.com/OpenTLV/opentlv-testlab/issues/1).
+release installation. Issue #4 adds the [differential runner](docs/differential-runner.md)
+and its two library adapters. The fixture corpus and mismatch reports remain
+follow-up work in [epic #1](https://github.com/OpenTLV/opentlv-testlab/issues/1).
 External comparison dependencies belong only in TestLab.
 
 ## Set up both Lua dependencies
@@ -35,6 +36,19 @@ paths, versions, hashes and provenance. Only the external library is cached.
 See [dependency setup](docs/dependencies.md) for cache keys, offline verification,
 custom tool paths, receipts and supported-platform limits.
 
+## Run the differential comparison
+
+After setup, compare both libraries on the same bytes:
+
+```sh
+python3 scripts/run_differential.py
+```
+
+Each fixture ends as `pass`, `mismatch`, `unsupported` or `inconclusive`. The command
+exits 0 when every shared fixture passes, 3 on a mismatch and 1 when the run itself
+fails. See the [runner guide](docs/differential-runner.md) for outcomes, the
+normalized representation, the fixture format and current limits.
+
 ## Run the capability audit
 
 Use Python 3.10+ and stock Lua 5.2 (tested locally with 5.2.4). For example,
@@ -53,10 +67,11 @@ they recheck every file before running Lua. Use `--source-dir PATH` to audit an
 existing copy. A missing or changed file, failed capability assertion, wrong Lua
 runtime or timeout fails the command.
 
-The `Fast` workflow runs the dependency tests and full setup on Ubuntu with Lua
-5.2, restores only the exact external cache key, then verifies an offline cache
-hit. It uploads provenance and logs. It does not yet run the differential gate
-planned in issue #7.
+The `Fast` workflow runs the Python tests and full setup on Ubuntu with Lua 5.2,
+restores only the exact external cache key, then verifies an offline cache hit. It
+runs the seed fixtures, requires the deliberate mismatch probe to exit with code 3,
+and uploads provenance and logs. The corpus gate and manual suite are planned in
+issue #7.
 
 ## License
 
