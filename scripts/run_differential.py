@@ -29,6 +29,7 @@ MISMATCH_EXIT = 3  # Distinct from uncaught errors (1) and argparse usage errors
 CLASSIFICATIONS = ("shared", "unsupported", "inconclusive")
 OUTCOMES = ("pass", "mismatch", "unsupported", "inconclusive")
 FRAMING_ERRORS = ("empty", "truncated", "trailing")
+CATEGORIES = ("primitive", "constructed", "nested", "tag-boundary", "length-boundary", "truncated", "malformed")
 PRIMITIVES = ("boolean", "integer", "bit_string", "octet_string", "ia5string")
 MAX_WIRE_BYTES = 4096
 MAX_SHARED_DEPTH = 4
@@ -148,6 +149,18 @@ def validate_fixture(fixture):
         raise ValueError(f"Fixture {fixture['id']}: {error}") from error
 
 
+def validate_reproduction(metadata, fixtures):
+    """Metadata names exact package versions, so changing a pin forces the corpus to be reverified."""
+    require(isinstance(metadata, dict) and metadata.keys() == {"command", "runtime", "packages"},
+            "Reproduction metadata needs command, runtime and packages")
+    require(metadata["packages"] == {"opentlv": load_release_pin()["version"], "lua-asn1": load_pin()["version"]},
+            "Corpus was verified against different package versions")
+    for fixture in fixtures:
+        require(fixture.get("category") in CATEGORIES, f"Fixture {fixture['id']}: Category must be: {', '.join(CATEGORIES)}")
+        require(isinstance(fixture.get("description"), str) and fixture["description"].strip(),
+                f"Fixture {fixture['id']}: Needs a description")
+
+
 def load_corpus(path):
     corpus = json.loads(path.read_text(encoding="utf-8"))
     require(isinstance(corpus, dict) and corpus.get("schema") == 1, "Expected fixture schema 1")
@@ -157,7 +170,9 @@ def load_corpus(path):
         validate_fixture(fixture)
     identifiers = [fixture["id"] for fixture in fixtures]
     require(len(set(identifiers)) == len(identifiers), "Fixture ids must be unique")
-    return fixtures
+    if "reproduction" in corpus:
+        validate_reproduction(corpus["reproduction"], fixtures)
+    return corpus
 
 
 def newest_receipt(runs):
@@ -302,17 +317,21 @@ def classify(fixture, results):
     return ("mismatch" if differences else "pass"), differences
 
 
-def run_comparison(fixtures, receipt):
+def run_comparison(fixtures, receipt, reproduction=None):
     records, identities = {}, {}
     for name, adapter in receipt["adapters"].items():
         requests = [{"id": f["id"], "wire": bytes.fromhex(f["wire"]).hex(),
                      **({"schema": f["schema"]} if adapter["schema"] else {})} for f in fixtures]
         identities[name], records[name] = run_adapter(name, adapter, receipt["lua"], requests)
+        if reproduction:
+            require(identities[name].get("runtime") == reproduction["runtime"],
+                    f"Corpus was verified on {reproduction['runtime']}, not {identities[name].get('runtime')}")
     results = []
     for index, fixture in enumerate(fixtures):
         observed = {name: records[name][index] for name in records}
         outcome, differences = classify(fixture, observed)
-        results.append({"id": fixture["id"], "operation": fixture["operation"],
+        results.append({"id": fixture["id"], "category": fixture.get("category"),
+                        "description": fixture.get("description"), "operation": fixture["operation"],
                         "wire": bytes.fromhex(fixture["wire"]).hex(),
                         "classification": fixture["classification"], "outcome": outcome,
                         "reason": fixture.get("reason"), "differences": differences,
@@ -320,7 +339,7 @@ def run_comparison(fixtures, receipt):
     summary = {outcome: sum(r["outcome"] == outcome for r in results) for outcome in OUTCOMES}
     require(summary["pass"] + summary["mismatch"] > 0, "No shared fixture was compared")
     return {"schema": 1, "provenance": str(receipt["path"]), "runtime": receipt["runtime"],
-            "platform": receipt["platform"], "packages": receipt["packages"],
+            "platform": receipt["platform"], "packages": receipt["packages"], "reproduction": reproduction,
             "adapters": identities, "summary": summary, "fixtures": results}
 
 
@@ -344,9 +363,9 @@ def main(arguments=None):
     parser.add_argument("--output", type=Path, help="Also write all observations as JSON")
     args = parser.parse_args(arguments)
     try:
-        fixtures = load_corpus(args.fixtures)
+        corpus = load_corpus(args.fixtures)
         receipt = load_receipt((args.provenance or newest_receipt(args.runs_dir)).resolve())
-        report = run_comparison(fixtures, receipt)
+        report = run_comparison(corpus["fixtures"], receipt, corpus.get("reproduction"))
         print_report(report)
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)

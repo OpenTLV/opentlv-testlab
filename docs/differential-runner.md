@@ -149,8 +149,55 @@ The parser does not judge ASN.1 semantics, so authors must still give `shared`
 fixtures canonical primitive values. The mismatch probe breaks that rule on purpose.
 
 [`differential/fixtures/seed.json`](../differential/fixtures/seed.json) exercises each
-adapter path. It is not the coverage corpus planned in
-[issue #5](https://github.com/OpenTLV/opentlv-testlab/issues/5).
+adapter path and stays the default corpus.
+
+A corpus can add reproduction metadata, as the BER corpus does:
+
+```json
+"reproduction": {
+  "command": "python3 scripts/run_differential.py --fixtures differential/fixtures/asn1-ber.json",
+  "runtime": "Lua 5.2",
+  "packages": {"opentlv": "0.3.0", "lua-asn1": "2.2.1"}
+}
+```
+
+The versions must equal the committed pins and the runtime must equal the one each
+adapter reports, or the run fails. Changing a pin therefore requires verifying the
+corpus again. Every fixture in such a corpus also needs a `category` and a `description`,
+and the `--output` report retains all of them.
+
+## BER corpus
+
+[`differential/fixtures/asn1-ber.json`](../differential/fixtures/asn1-ber.json) is the
+coverage corpus. Its bytes are committed, so nothing about it depends on a seed, a clock
+or a library:
+
+```sh
+python3 scripts/run_differential.py --fixtures differential/fixtures/asn1-ber.json
+```
+
+| Category | Compared as `shared` | Declared `unsupported` or `inconclusive` |
+| --- | --- | --- |
+| `primitive` | Each shared type, INTEGER octet-size boundaries, BIT STRING unused-bit counts | Negative and large INTEGER, types lua-asn1 lacks, invalid IA5 |
+| `constructed` | SEQUENCE, SEQUENCE OF, explicit and implicit tags, false values | Constructed strings, SET and SET OF |
+| `nested` | Siblings and every constructed kind up to four levels | Five levels |
+| `tag-boundary` | Context tags 0-30 at both ends and around universal numbers | High-tag form, application and private classes |
+| `length-boundary` | Lengths 0, 1, 126 and 127, on primitives and on a parent at the limit | Long form, indefinite length, nonminimal length |
+| `truncated` | Each missing part, down to the depth bound, as `empty` or `truncated` | Truncated long-form headers and values |
+| `malformed` | Trailing bytes, and children that overrun their parent | Reserved length, invalid primitive contents, schema conformance, end-of-contents octets |
+
+Classification rests on the [comparison scope](asn1-comparison.md) and the capability
+audit, not on which fixtures happened to agree. Where a reason ends in a name in
+parentheses, that name is the audit check that demonstrates it, and a test requires the
+check to exist. A disagreement on a declared fixture is retained in the `--output` report
+but never decides the run: `length-reserved-ff`, for example, is accepted by lua-asn1 and
+rejected by OpenTLV.
+
+To add a fixture, write its bytes and expectation by hand, independently of either
+library, then run the command above and read the observations with `--output`. If the
+libraries differ on a `shared` fixture, look into the difference; do not reclassify the
+fixture just to pass the run. Only a documented limitation or missing contract justifies
+declaring it instead.
 
 ## Limits
 
@@ -158,16 +205,17 @@ adapter path. It is not the coverage corpus planned in
 - Lua 5.2 on Linux/WSL is the only supported configuration, as for dependency setup.
 - A `pass` shows the libraries agree on the bytes in the corpus, not that either is
   correct in general or that lua-asn1 is a validating decoder.
-- Reproduction commands and CI report artifacts are planned in
+- Mismatch reports with per-failure reproduction details and CI artifacts are planned in
   [issue #6](https://github.com/OpenTLV/opentlv-testlab/issues/6). `--output` retains
-  observations, but is not that report.
+  observations and corpus metadata, but is not that report.
 
 ## Verification
 
-Fast runs the seed fixtures and requires the mismatch probe to exit with code 3.
-Python tests cover eligibility, classification, process failures and receipt checks
-using stand-in adapter processes, so they also run on Windows without Lua. Only
-the Fast steps and the commands above exercise the Lua adapters and real libraries.
+Fast runs the seed fixtures and the BER corpus, and requires the mismatch probe to exit
+with code 3. Python tests check the corpus's coverage and metadata. They also cover
+eligibility, classification, process failures and receipt checks using stand-in adapter
+processes, so they run on Windows without Lua. Only the Fast steps and the commands
+above exercise the Lua adapters and real libraries.
 
 Local verification on 2026-10-30 used WSL with Lua 5.2.4, a fresh OpenTLV Lua v0.3.0
 installation from luarocks.org and the cached lua-asn1 v2.2.1. The seed fixtures gave 22 pass,
@@ -175,5 +223,10 @@ installation from luarocks.org and the cached lua-asn1 v2.2.1. The seed fixtures
 code 3. Real-library runs also confirmed that inherited Lua settings are ignored,
 that neither adapter's path can load the other library, and that two runs produce
 identical reports. Hosted Fast remains to be verified on the PR.
+
+Local verification of the BER corpus on 2026-10-30 used the same configuration and
+freshly installed OpenTLV Lua v0.3.0. It gave 102 pass, 0 mismatch, 43 unsupported and
+24 inconclusive with exit code 0, and two runs produced identical reports. Hosted Fast
+remains to be verified on the PR.
 
 [source]: https://github.com/OpenTLV/opentlv-lua/blob/v0.3.0/docs/api.md#source-preservation

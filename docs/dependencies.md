@@ -83,7 +83,7 @@ An explicit offline check requires an existing valid external entry:
 python3 scripts/setup_lua.py --lua lua5.2 --external-only --offline
 ```
 
-It reruns all 35 external capability checks against the **installed** modules.
+It reruns all 38 external capability checks against the **installed** modules.
 `--offline` is rejected without `--external-only`; it cannot waive fresh OpenTLV
 acquisition. `--external-only` without `--offline` permits cold external setup.
 

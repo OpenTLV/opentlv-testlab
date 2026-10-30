@@ -13,6 +13,10 @@
 
 ### Added
 
+- Deterministic ASN.1 BER differential corpus of primitive, constructed, nested, tag and
+  length boundary, truncated and malformed cases, with a declared support classification,
+  category, description and pin-checked reproduction metadata. Fast runs it through both
+  adapters, and the capability audit gains the probes that its reasons cite. (#5)
 - Lua differential runner with independent OpenTLV Lua and lua-asn1 adapters over the
   same bytes, normalized parse trees and values, and pass/mismatch/unsupported/inconclusive
   outcomes. Crashes, timeouts, resource limits and changed dependencies are run failures,

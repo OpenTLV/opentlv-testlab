@@ -6,6 +6,7 @@ import copy
 import io
 import json
 from pathlib import Path
+import re
 import sys
 import tempfile
 import unittest
@@ -127,8 +128,29 @@ class CorpusValidationTests(unittest.TestCase):
                 with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
                     differential.load_corpus(path)
 
+    def test_reproduction_metadata_must_match_the_pins_and_cover_every_fixture(self):
+        packages = {"opentlv": differential.load_release_pin()["version"], "lua-asn1": differential.load_pin()["version"]}
+        metadata = {"command": "run", "runtime": "Lua 5.2", "packages": packages}
+        described = {**shared(), "category": "primitive", "description": "One octet"}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "corpus.json"
+            path.write_text(json.dumps({"schema": 1, "reproduction": metadata, "fixtures": [described]}), encoding="utf-8")
+            self.assertEqual(differential.load_corpus(path)["reproduction"], metadata)
+            for changed, fixture, message in [({"runtime": None}, described, None),
+                                              ({"packages": {**packages, "lua-asn1": "0"}}, described, "different package versions"),
+                                              ({}, shared(), "Category must be"),
+                                              ({}, {**described, "category": "other"}, "Category must be"),
+                                              ({}, {**described, "description": " "}, "Needs a description")]:
+                candidate = {**metadata, **changed}
+                if message is None:
+                    del candidate["runtime"]
+                    message = "command, runtime and packages"
+                path.write_text(json.dumps({"schema": 1, "reproduction": candidate, "fixtures": [fixture]}), encoding="utf-8")
+                with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                    differential.load_corpus(path)
+
     def test_committed_seed_covers_every_declared_classification(self):
-        fixtures = differential.load_corpus(differential.DEFAULT_FIXTURES)
+        fixtures = differential.load_corpus(differential.DEFAULT_FIXTURES)["fixtures"]
         for classification in differential.CLASSIFICATIONS:
             self.assertTrue(any(f["classification"] == classification for f in fixtures), classification)
         for result in ("accept", "reject"):
@@ -138,8 +160,62 @@ class CorpusValidationTests(unittest.TestCase):
             self.assertIn(f'"{kind}"', schemas)
 
     def test_mismatch_probe_is_shared_so_it_reaches_a_verdict(self):
-        fixtures = differential.load_corpus(ROOT / "tests/fixtures/differential_mismatch.json")
+        fixtures = differential.load_corpus(ROOT / "tests/fixtures/differential_mismatch.json")["fixtures"]
         self.assertTrue(all(f["classification"] == "shared" for f in fixtures))
+
+
+def tree_nodes(node, depth=1):
+    yield node, depth
+    for child in node.get("children", ()):
+        yield from tree_nodes(child, depth + 1)
+
+
+class BerCorpusTests(unittest.TestCase):
+    """Coverage of the committed corpus; only Fast runs it through the real libraries."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.path = ROOT / "differential/fixtures/asn1-ber.json"
+        cls.corpus = differential.load_corpus(cls.path)
+        cls.fixtures = cls.corpus["fixtures"]
+        cls.shared = [f for f in cls.fixtures if f["classification"] == "shared"]
+        cls.trees = [f["expected"]["tree"] for f in cls.shared if f["expected"]["result"] == "accept"]
+        cls.nodes = [item for tree in cls.trees for item in tree_nodes(tree)]
+
+    def test_reproduction_command_runs_this_corpus(self):
+        self.assertIn(self.path.relative_to(ROOT).as_posix(), self.corpus["reproduction"]["command"])
+
+    def test_every_category_compares_something_and_declares_its_gaps(self):
+        for category in differential.CATEGORIES:
+            selected = [f["classification"] for f in self.fixtures if f["category"] == category]
+            self.assertIn("shared", selected, category)
+            self.assertGreater(len(set(selected)), 1, category)
+
+    def test_every_shared_schema_and_framing_error_is_exercised(self):
+        schemas = json.dumps([f["schema"] for f in self.shared])
+        for kind in (*differential.PRIMITIVES, "sequence", "sequence_of", "explicit"):
+            self.assertIn(f'"{kind}"', schemas)
+        framing = {f["expected"].get("framing") for f in self.shared}
+        self.assertLessEqual(set(differential.FRAMING_ERRORS), framing)
+
+    def test_tag_length_and_depth_boundaries_are_reached(self):
+        identifiers = {node["identifier"] for node, _ in self.nodes}
+        self.assertLessEqual({"80", "9e", "a0", "be"}, identifiers)
+        lengths = {node["length"] for node, _ in self.nodes}
+        self.assertLessEqual({0, 1, 126, 127}, lengths)
+        self.assertEqual(max(depth for _, depth in self.nodes), differential.MAX_SHARED_DEPTH)
+        self.assertTrue(any(node["length"] == 127 and "children" in node for node, _ in self.nodes))
+
+    def test_each_case_is_distinct(self):
+        cases = [(bytes.fromhex(f["wire"]), json.dumps(f["schema"], sort_keys=True)) for f in self.fixtures]
+        self.assertEqual(len(set(cases)), len(cases))
+
+    def test_cited_probes_exist_in_the_capability_audit(self):
+        audit = (ROOT / "tests/asn1_capabilities.lua").read_text(encoding="utf-8")
+        cited = [m.group(1) for f in self.fixtures if (m := re.search(r"\(([a-z0-9-]+)\)$", f.get("reason", "")))]
+        self.assertTrue(cited)
+        for probe in cited:
+            self.assertIn(f'"{probe}"', audit)
 
 
 class ClassificationTests(unittest.TestCase):
@@ -430,6 +506,22 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(by_id["different"]["observed"]["opentlv"]["tree"], leaf("04", "41"))
         self.assertEqual(by_id["gap"]["observed"]["lua-asn1"]["status"], "rejected")
         self.assertEqual(by_id["gap"]["wire"], "9f1f0141")
+
+    def test_report_retains_reproduction_metadata_and_checks_the_runtime(self):
+        metadata = {"command": "run", "runtime": "Lua 5.2", "packages": {}}
+        fixture = {**rejected_fixture(), "category": "truncated", "description": "Cut short"}
+        rejected = {"status": "rejected", "detail": "x"}
+
+        def adapter(_name, _adapter, _lua, requests):
+            return {"runtime": "Lua 5.2"}, [{"id": r["id"], **rejected} for r in requests]
+
+        with patch.object(differential, "run_adapter", side_effect=adapter):
+            report = differential.run_comparison([fixture], self.receipt, metadata)
+            self.assertEqual(report["reproduction"], metadata)
+            self.assertEqual(report["fixtures"][0]["category"], "truncated")
+            self.assertEqual(report["fixtures"][0]["description"], "Cut short")
+            with self.assertRaisesRegex(ValueError, "verified on Lua 5.3, not Lua 5.2"):
+                differential.run_comparison([fixture], self.receipt, {**metadata, "runtime": "Lua 5.3"})
 
     def test_clean_run_exits_zero_even_with_declared_gaps(self):
         results = {"opentlv": {"same": accepted(), "declared": accepted()},
