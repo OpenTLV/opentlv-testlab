@@ -263,8 +263,9 @@ code 3 and checks that the probe's report reproduces itself. It uploads all thre
 as the `differential-reports` artifact, even after a failure, and the setup receipts as
 `dependency-provenance`. Python tests check the corpus's coverage and metadata. They also
 cover eligibility, classification, reports, process failures and receipt checks using
-stand-in adapter processes, so they run on Windows without Lua. Only the Fast steps and
-the commands above exercise the Lua adapters and real libraries.
+stand-in adapter processes, so they run on Windows without Lua. Only the Fast steps, the
+[extended suite](ci.md#extended-suite) and the commands above exercise the Lua adapters and
+real libraries.
 
 Local verification on 2026-10-30 used WSL with Lua 5.2.4, a fresh OpenTLV Lua v0.3.0
 installation from luarocks.org and the cached lua-asn1 v2.2.1. The seed fixtures gave 22 pass,

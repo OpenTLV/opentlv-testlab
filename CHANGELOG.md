@@ -15,6 +15,12 @@
 
 ### Added
 
+- Manual `Extended` workflow and `scripts/run_extended.py`: on x86-64 and arm64 Ubuntu it
+  runs a cold and a repeated setup, an offline cache check, the standalone capability audit,
+  both corpora with repeat and second-install comparisons and the mismatch probe, and
+  uploads a summary, reports, provenance and logs. Fast stays the pull request gate, and
+  Extended otherwise runs only on pull requests that change the suite. Document both in
+  `docs/ci.md`. (#7)
 - Actionable differential reports: input bytes, operation, schema, expectation, both
   libraries' outputs and errors, runtime, package versions, TestLab commit and per-failure
   reproduction commands, with possible defects kept apart from declared unsupported or

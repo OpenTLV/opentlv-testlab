@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+
+name: Extended
+
+on:
+  workflow_dispatch:
+  # GitHub cannot dispatch a workflow before it reaches the default branch, so a
+  # pull request changing the suite is the only hosted run that can verify it first.
+  pull_request:
+    paths:
+      - .github/workflows/extended.yml
+      - scripts/run_extended.py
+
+permissions:
+  contents: read
+
+jobs:
+  extended:
+    name: Extended suite (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install suite runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y lua5.2 liblua5.2-dev luarocks cmake build-essential git unzip zip
+      - name: Check dependency policies
+        run: python3 -m unittest discover -s tests -v
+      # No cache is restored: the cold setup must acquire and verify the external source.
+      - name: Run the extended suite
+        run: python3 scripts/run_extended.py --lua lua5.2
+      - name: Publish the suite summary
+        if: always()
+        run: test ! -f build/extended/summary.md || cat build/extended/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload suite summary, reports, provenance and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: extended-${{ matrix.runner }}
+          path: |
+            build/extended/summary.*
+            build/extended/reports/
+            build/extended/logs/
+            build/extended/runs/*/provenance.json
+            build/extended/runs/*/failure.json
+            build/extended/runs/*/*.log
+          if-no-files-found: warn

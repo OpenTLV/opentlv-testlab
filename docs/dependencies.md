@@ -158,6 +158,8 @@ performs a complete fresh OpenTLV installation from luarocks.org, and performs a
 offline external cache hit check. It never caches the run directory, OpenTLV downloads,
 Core build or installed native module. Provenance and logs are uploaded even on failure.
 No fuzzy restore keys permit a different configuration to masquerade as a hit.
+The manual [extended suite](ci.md#extended-suite) restores no cache, so it also exercises
+the cold external path and a real miss followed by a hit.
 
 Tests cover cold/warm behavior, key invalidation, offline misses, corruption,
 extra/missing installed files, incomplete downloads/installs, fresh registry
