@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "repository": "kunkku/lua-asn1",
+  "version": "2.2.1",
+  "tag": "v2.2.1",
+  "commit": "ac0c68c796143d1698ec88790bfd8b405a9d3f64",
+  "module": "asn1",
+  "license": "MIT",
+  "runtime": "Lua 5.2",
+  "files": {
+    "LICENSE": "5a8826af25024076778290b832d8a86266bef69e1c236030082f110e94fa00f1",
+    "Makefile": "eb848d3ef460fb0e8c1a03bfc2ed0b419e192173d0ddcd406991867edcffa28b",
+    "asn1/init.lua": "7a1b5731f6b99b590bccab9627316a953ab952035431038de6d9cb0926d011cf",
+    "asn1/rfc3779.lua": "edfd6479f975551b2573340045f0165bcdd830bb652ab6ff0bf3e30d31b78926",
+    "asn1/rfc5280.lua": "125f4caea230965cb27ce26469d2340c674b5455a33026d173bc3c902eaf2d4b"
+  }
+}

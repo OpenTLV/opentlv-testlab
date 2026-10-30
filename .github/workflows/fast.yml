@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+
+name: Fast
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capabilities:
+    name: ASN.1 capability audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install audit runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y lua5.2
+      - name: Check source verification
+        run: python3 -m unittest discover -s tests -v
+      - name: Verify pinned upstream capabilities
+        run: python3 scripts/check_asn1.py --download --lua lua5.2
