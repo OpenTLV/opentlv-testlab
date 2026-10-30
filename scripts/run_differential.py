@@ -8,16 +8,17 @@ import argparse
 import json
 from pathlib import Path
 import re
+import shlex
 import string
 import subprocess
 import sys
 
 if __package__:
     from .check_asn1 import ROOT, load_pin
-    from .setup_lua import clean_env, digest, load_release_pin, require, verify_install, write_json
+    from .setup_lua import clean_env, digest, load_release_pin, require, verify_install
 else:
     from check_asn1 import ROOT, load_pin
-    from setup_lua import clean_env, digest, load_release_pin, require, verify_install, write_json
+    from setup_lua import clean_env, digest, load_release_pin, require, verify_install
 
 HOST = ROOT / "differential/lua/adapter_host.lua"
 OPENTLV_ADAPTER = ROOT / "differential/lua/opentlv_adapter.lua"
@@ -25,6 +26,7 @@ ASN1_ADAPTER = ROOT / "differential/lua/asn1_adapter.lua"
 DEFAULT_FIXTURES = ROOT / "differential/fixtures/seed.json"
 ADAPTER_TIMEOUT = 60
 MISMATCH_EXIT = 3  # Distinct from uncaught errors (1) and argparse usage errors (2).
+SETUP_COMMAND = "python3 scripts/setup_lua.py --lua lua5.2"
 
 CLASSIFICATIONS = ("shared", "unsupported", "inconclusive")
 OUTCOMES = ("pass", "mismatch", "unsupported", "inconclusive")
@@ -40,6 +42,14 @@ class FramingError(ValueError):
     def __init__(self, kind):
         super().__init__(f"Wire has a {kind} framing error")
         self.kind = kind
+
+
+class FixtureFailure(ValueError):
+    """A run failure at a known fixture, so the failure report can record its input."""
+
+    def __init__(self, message, fixture_id):
+        super().__init__(message)
+        self.fixture_id = fixture_id
 
 
 def parse_shared_element(data, depth):
@@ -175,6 +185,14 @@ def load_corpus(path):
     return corpus
 
 
+def select_fixtures(fixtures, identifiers):
+    if not identifiers:
+        return fixtures
+    unknown = sorted(set(identifiers) - {fixture["id"] for fixture in fixtures})
+    require(not unknown, f"Unknown fixture: {', '.join(unknown)}")
+    return [fixture for fixture in fixtures if fixture["id"] in identifiers]
+
+
 def newest_receipt(runs):
     candidates = []
     for path in runs.glob("*/provenance.json"):
@@ -254,9 +272,12 @@ def run_adapter(name, adapter, lua, requests):
                                 input="return " + lua_literal(requests), capture_output=True,
                                 text=True, encoding="utf-8", errors="replace", timeout=ADAPTER_TIMEOUT)
     except subprocess.TimeoutExpired as error:
-        raise ValueError(f"{name} timed out at fixture {current_fixture(error.stdout, requests)}") from error
-    require(result.returncode == 0, f"{name} failed ({result.returncode}) at fixture "
-            f"{current_fixture(result.stdout, requests)}: {result.stderr[-2000:]}")
+        fixture_id = current_fixture(error.stdout, requests)
+        raise FixtureFailure(f"{name} timed out at fixture {fixture_id}", fixture_id) from error
+    if result.returncode != 0:
+        fixture_id = current_fixture(result.stdout, requests)
+        raise FixtureFailure(f"{name} failed ({result.returncode}) at fixture {fixture_id}: "
+                             f"{result.stderr[-2000:]}", fixture_id)
     lines = [json.loads(line) for line in result.stdout.splitlines()]
     require(len(lines) == len(requests) + 1, f"{name} returned an incomplete result set")
     identity, records = lines[0], lines[1:]
@@ -293,27 +314,35 @@ def tree_differences(name, expected, observed, path="root"):
     return differences
 
 
+def library_differences(fixture, results):
+    """Return how each library differs from a shared fixture's expectation."""
+    expected = fixture["expected"]
+    wire_size = len(bytes.fromhex(fixture["wire"]))
+    differences = {}
+    for name, result in results.items():
+        status = result["status"]
+        if status == "unsupported":
+            raise FixtureFailure(f"Fixture {fixture['id']} is shared, but {name} reports: {result.get('detail')}",
+                                 fixture["id"])
+        found = differences[name] = []
+        if expected["result"] == "reject":
+            # Error text and categories are never compared, only the declared framing rejection.
+            if status != "rejected":
+                found.append(f"{name}: expected rejection, observed acceptance")
+        elif status != "accepted":
+            found.append(f"{name}: expected acceptance, observed rejection: {result.get('detail')}")
+        else:
+            found.extend(tree_differences(name, expected["tree"], result["tree"]))
+            if result.get("consumed") != wire_size:
+                found.append(f"{name}: consumed {result.get('consumed')} of {wire_size} bytes")
+    return differences
+
+
 def classify(fixture, results):
     """Return (outcome, differences); eligibility comes from the fixture, not library behavior."""
     if fixture["classification"] != "shared":
         return fixture["classification"], []
-    expected = fixture["expected"]
-    wire_size = len(bytes.fromhex(fixture["wire"]))
-    differences = []
-    for name, result in results.items():
-        status = result["status"]
-        require(status != "unsupported",
-                f"Fixture {fixture['id']} is shared, but {name} reports: {result.get('detail')}")
-        if expected["result"] == "reject":
-            # Error text and categories are never compared, only the declared framing rejection.
-            if status != "rejected":
-                differences.append(f"{name}: expected rejection, observed acceptance")
-        elif status != "accepted":
-            differences.append(f"{name}: expected acceptance, observed rejection: {result.get('detail')}")
-        else:
-            differences.extend(tree_differences(name, expected["tree"], result["tree"]))
-            if result.get("consumed") != wire_size:
-                differences.append(f"{name}: consumed {result.get('consumed')} of {wire_size} bytes")
+    differences = [item for found in library_differences(fixture, results).values() for item in found]
     return ("mismatch" if differences else "pass"), differences
 
 
@@ -330,17 +359,167 @@ def run_comparison(fixtures, receipt, reproduction=None):
     for index, fixture in enumerate(fixtures):
         observed = {name: records[name][index] for name in records}
         outcome, differences = classify(fixture, observed)
+        differing = [name for name, found in library_differences(fixture, observed).items() if found] \
+            if outcome == "mismatch" else []
         results.append({"id": fixture["id"], "category": fixture.get("category"),
                         "description": fixture.get("description"), "operation": fixture["operation"],
-                        "wire": bytes.fromhex(fixture["wire"]).hex(),
-                        "classification": fixture["classification"], "outcome": outcome,
-                        "reason": fixture.get("reason"), "differences": differences,
-                        "observed": observed})
+                        "wire": bytes.fromhex(fixture["wire"]).hex(), "schema": fixture["schema"],
+                        "classification": fixture["classification"], "expected": fixture.get("expected"),
+                        "outcome": outcome, "reason": fixture.get("reason"), "differences": differences,
+                        "differing_libraries": differing, "observed": observed})
     summary = {outcome: sum(r["outcome"] == outcome for r in results) for outcome in OUTCOMES}
-    require(summary["pass"] + summary["mismatch"] > 0, "No shared fixture was compared")
-    return {"schema": 1, "provenance": str(receipt["path"]), "runtime": receipt["runtime"],
+    return {"schema": 1, "status": "mismatch" if summary["mismatch"] else "passed",
+            "provenance": str(receipt["path"]), "runtime": receipt["runtime"],
             "platform": receipt["platform"], "packages": receipt["packages"], "reproduction": reproduction,
             "adapters": identities, "summary": summary, "fixtures": results}
+
+
+def testlab_revision():
+    """A commit alone cannot reproduce modified files, so the report says which case it is."""
+    try:
+        commit, status = (subprocess.run(["git", *command], cwd=ROOT, capture_output=True, text=True,
+                                         check=True, timeout=30).stdout.strip()
+                          for command in (["rev-parse", "HEAD"], ["status", "--porcelain"]))
+    except (OSError, subprocess.SubprocessError):
+        return {"commit": None, "modified": None}
+    return {"commit": commit, "modified": bool(status)}
+
+
+def describe_origin(corpus):
+    path = corpus.resolve()
+    return {"corpus": path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path),
+            "corpus_sha256": digest(path) if path.is_file() else None, "testlab": testlab_revision()}
+
+
+def reproduction_steps(origin, identifiers=()):
+    """Steps for a new checkout, so no path from the original machine's setup is needed."""
+    command = ["python3", "scripts/run_differential.py", "--fixtures", origin["corpus"]]
+    for identifier in identifiers:
+        command += ["--fixture", identifier]
+    commit = origin["testlab"]["commit"]
+    return ([f"git checkout {commit}"] if commit else []) + [SETUP_COMMAND, shlex.join(command)]
+
+
+def add_reproduction(report, origin, selected):
+    report.update(origin)
+    report["reproduce"] = reproduction_steps(origin, selected)
+    for result in report["fixtures"]:
+        if result["outcome"] == "mismatch":
+            result["reproduce"] = reproduction_steps(origin, [result["id"]])
+
+
+def failure_report(error, origin, fixtures, receipt, selected):
+    """A run failure gives no verdict, but its error and any failing input stay reproducible."""
+    report = {"schema": 1, "status": "failed", "error": str(error), **origin}
+    if receipt:
+        report.update({"provenance": str(receipt["path"]), "runtime": receipt["runtime"],
+                       "platform": receipt["platform"], "packages": receipt["packages"]})
+    fixture = next((f for f in fixtures if f["id"] == getattr(error, "fixture_id", None)), None)
+    if fixture:
+        report["failed_fixture"] = {"id": fixture["id"], "operation": fixture["operation"],
+                                    "wire": bytes.fromhex(fixture["wire"]).hex(), "schema": fixture["schema"],
+                                    "classification": fixture["classification"],
+                                    "expected": fixture.get("expected")}
+    report["reproduce"] = reproduction_steps(origin, [fixture["id"]] if fixture else selected)
+    return report
+
+
+def json_block(value):
+    return ["```json", json.dumps(value, sort_keys=True), "```"]
+
+
+def command_block(steps):
+    return ["```sh", *steps, "```"]
+
+
+def render_input(result):
+    return [f"- Operation: `{result['operation']}`",
+            f"- Input ({len(bytes.fromhex(result['wire']))} bytes): `{result['wire']}`"]
+
+
+def render_mismatch(result):
+    differing = result["differing_libraries"]
+    met = [name for name in result["observed"] if name not in differing]
+    triage = f"{', '.join(differing)} differs from the fixture; {', '.join(met)} meets it." if met else \
+        "Every library differs from the fixture, so check the fixture first."
+    lines = [f"### {result['id']}", ""]
+    if result["description"]:
+        lines += [result["description"], ""]
+    lines += [*render_input(result), f"- Triage: {triage}", "", "Differences:", ""]
+    lines += [f"- {difference}" for difference in result["differences"]]
+    lines += ["", "Schema:", "", *json_block(result["schema"]), "", "Expected:", "", *json_block(result["expected"])]
+    for name, observed in result["observed"].items():
+        lines += ["", f"Observed by {name}:", "", *json_block(observed)]
+    return lines + ["", f"Reproduce (exit code {MISMATCH_EXIT}):", "", *command_block(result["reproduce"]), ""]
+
+
+def render_mismatches(report):
+    mismatches = [r for r in report["fixtures"] if r["outcome"] == "mismatch"]
+    if not mismatches:
+        return []
+    lines = ["## Mismatches: possible defects", "",
+             "A library differs from a fixture declared comparable. Investigate each one: it can be a "
+             "library defect, a documented limitation that should be declared `unsupported`, or a "
+             "fixture error.", ""]
+    for result in mismatches:
+        lines += render_mismatch(result)
+    return lines
+
+
+def render_declared(report):
+    declared = [r for r in report["fixtures"] if r["classification"] != "shared"]
+    if not declared:
+        return []
+    names = list(declared[0]["observed"])
+    lines = ["## Declared by the fixture: not defects", "",
+             "These `unsupported` and `inconclusive` fixtures do not decide the run. Observations are "
+             "retained in the JSON report.", "",
+             "| Fixture | Outcome | " + " | ".join(names) + " | Reason |",
+             "| --- | --- | " + "--- | " * len(names) + "--- |"]
+    for result in declared:
+        statuses = [result["observed"][name]["status"] for name in names]
+        reason = result["reason"].replace("|", "\\|")
+        lines.append(f"| {result['id']} | {result['outcome']} | " + " | ".join(statuses) + f" | {reason} |")
+    return lines + [""]
+
+
+def render_failure(report):
+    lines = ["## Run failure: no verdict", "",
+             "The run did not finish, so its results cannot be trusted. A crash or timeout at a "
+             "fixture can still be a library defect.", "", "```text", report["error"], "```", ""]
+    fixture = report.get("failed_fixture")
+    if fixture:
+        lines += [f"Failing fixture `{fixture['id']}`:", "", *render_input(fixture), "",
+                  "Schema:", "", *json_block(fixture["schema"]), ""]
+    return lines + ["Reproduce (exit code 1):", "", *command_block(report["reproduce"]), ""]
+
+
+def render_report(report):
+    lines = ["# Differential report", "", f"- Status: {report['status']}", f"- Corpus: `{report['corpus']}`",
+             f"- Corpus SHA-256: `{report['corpus_sha256']}`"]
+    testlab = report["testlab"]
+    state = " with uncommitted changes, so the commit alone may not reproduce this" if testlab["modified"] else ""
+    lines.append(f"- TestLab commit: `{testlab['commit'] or 'unknown'}`{state}")
+    if "runtime" in report:
+        platform = report["platform"]
+        details = [platform.get(key) for key in ("system", "release", "machine")] + list(platform.get("libc", ()))
+        lines += [f"- Runtime: {report['runtime']}", f"- Platform: {' '.join(str(d) for d in details if d)}"]
+        for name, package in report["packages"].items():
+            lines.append(f"- {name}: " + ", ".join(f"{key} {value}" for key, value in sorted(package.items())))
+        lines.append(f"- Setup receipt: `{report['provenance']}`")
+    if report["status"] == "failed":
+        return "\n".join([*lines, "", *render_failure(report)])
+    summary = ", ".join(f"{report['summary'][outcome]} {outcome}" for outcome in OUTCOMES)
+    lines += [f"- Summary: {summary}", "", *render_mismatches(report), *render_declared(report)]
+    return "\n".join(lines)
+
+
+def write_reports(args, report):
+    for path, text in ((args.output, json.dumps(report, indent=2, sort_keys=True) + "\n"),
+                       (args.report, render_report(report))):
+        if path:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
 
 
 def print_report(report):
@@ -353,6 +532,9 @@ def print_report(report):
         for difference in result["differences"]:
             print(f"             {difference}")
     print(", ".join(f"{report['summary'][outcome]} {outcome}" for outcome in OUTCOMES))
+    mismatches = render_mismatches(report)
+    if mismatches:
+        print("\n" + "\n".join(mismatches))
 
 
 def main(arguments=None):
@@ -360,18 +542,30 @@ def main(arguments=None):
     parser.add_argument("--fixtures", type=Path, default=DEFAULT_FIXTURES)
     parser.add_argument("--provenance", type=Path, help="Setup receipt; default is the newest complete run")
     parser.add_argument("--runs-dir", type=Path, default=ROOT / "build/dependency-runs")
+    parser.add_argument("--fixture", action="append", default=[], metavar="ID",
+                        help="Run only this fixture; repeat for more")
     parser.add_argument("--output", type=Path, help="Also write all observations as JSON")
+    parser.add_argument("--report", type=Path, help="Also write a Markdown report")
     args = parser.parse_args(arguments)
+    origin = describe_origin(args.fixtures)
+    fixtures, receipt = [], None
     try:
         corpus = load_corpus(args.fixtures)
+        fixtures = select_fixtures(corpus["fixtures"], args.fixture)
         receipt = load_receipt((args.provenance or newest_receipt(args.runs_dir)).resolve())
-        report = run_comparison(corpus["fixtures"], receipt, corpus.get("reproduction"))
+        report = run_comparison(fixtures, receipt, corpus.get("reproduction"))
+        # Selecting a declared fixture is a request to read its observations, not a verdict on a corpus.
+        require(args.fixture or report["summary"]["pass"] + report["summary"]["mismatch"] > 0,
+                "No shared fixture was compared")
+        add_reproduction(report, origin, args.fixture)
         print_report(report)
-        if args.output:
-            args.output.parent.mkdir(parents=True, exist_ok=True)
-            write_json(args.output, report)
+        write_reports(args, report)
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         print(f"Differential run failed: {error}", file=sys.stderr)
+        try:
+            write_reports(args, failure_report(error, origin, fixtures, receipt, args.fixture))
+        except OSError as write_error:
+            print(f"Could not write the failure report: {write_error}", file=sys.stderr)
         return 1
     return MISMATCH_EXIT if report["summary"]["mismatch"] else 0
 

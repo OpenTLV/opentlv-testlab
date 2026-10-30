@@ -7,12 +7,13 @@ import io
 import json
 from pathlib import Path
 import re
+import shlex
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from scripts import run_differential as differential
+from scripts import check_report, run_differential as differential
 from scripts.setup_lua import digest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -332,10 +333,12 @@ class AdapterProcessTests(unittest.TestCase):
 
     def test_failures_are_run_failures_naming_the_fixture(self):
         self.requests.append({"id": "second", "wire": "0400"})
-        with self.assertRaisesRegex(ValueError, r"fake failed \(139\) at fixture second: native failure"):
+        with self.assertRaisesRegex(ValueError, r"fake failed \(139\) at fixture second: native failure") as caught:
             self.run_host("crash")
-        with self.assertRaisesRegex(ValueError, "fake timed out at fixture second"):
+        self.assertEqual(caught.exception.fixture_id, "second")
+        with self.assertRaisesRegex(ValueError, "fake timed out at fixture second") as caught:
             self.run_host("hang", timeout=2)
+        self.assertEqual(caught.exception.fixture_id, "second")
         with self.assertRaisesRegex(ValueError, r"at fixture none \(adapter startup\): module not found"):
             self.run_host("startup")
 
@@ -544,6 +547,232 @@ class CommandTests(unittest.TestCase):
                                       "--runs-dir", str(Path(self.temp.name) / "none")])
         self.assertEqual(code, 1)
         self.assertIn("No complete passed setup", stderr.getvalue())
+
+    def reporting_run(self, opentlv=None, *extra):
+        fixtures = [{**shared("different"), "description": "One octet"}, {**declared("unsupported"), "id": "gap"}]
+        results = {"opentlv": {"different": opentlv or accepted(), "gap": accepted()},
+                   "lua-asn1": {"different": accepted(leaf("04", "42"), projected=True),
+                                "gap": {"status": "rejected", "detail": "x"}}}
+        output, markdown = Path(self.temp.name) / "out/report.json", Path(self.temp.name) / "out/report.md"
+        revision = {"commit": "a" * 40, "modified": False}
+        with patch.object(differential, "testlab_revision", return_value=revision):
+            code, stdout, stderr = self.command(fixtures, results, "--output", str(output), "--report", str(markdown), *extra)
+        return code, stdout, stderr, json.loads(output.read_text(encoding="utf-8")), markdown.read_text(encoding="utf-8")
+
+    def test_mismatch_report_records_what_reproduction_needs(self):
+        code, stdout, _, report, markdown = self.reporting_run()
+        self.assertEqual(code, differential.MISMATCH_EXIT)
+        self.assertEqual(report["status"], "mismatch")
+        self.assertEqual(report["runtime"], "Lua 5.2.4")
+        self.assertEqual(report["packages"]["lua-asn1"]["version"], "2.2.1")
+        self.assertEqual(report["testlab"]["commit"], "a" * 40)
+        self.assertEqual(report["corpus_sha256"], digest(self.corpus))
+        result = next(f for f in report["fixtures"] if f["id"] == "different")
+        self.assertEqual((result["wire"], result["operation"], result["schema"]), ("040141", "decode", OCTETS))
+        self.assertEqual(result["expected"]["tree"], leaf("04", "41"))
+        self.assertEqual(result["differing_libraries"], ["lua-asn1"])
+        self.assertEqual(result["observed"]["opentlv"]["tree"], leaf("04", "41"))
+        self.assertEqual(result["observed"]["lua-asn1"]["tree"]["value"], "42")
+        self.assertEqual(result["reproduce"][:2], ["git checkout " + "a" * 40, differential.SETUP_COMMAND])
+        self.assertEqual(shlex.split(result["reproduce"][2])[-2:], ["--fixture", "different"])
+        for text in ("Input (3 bytes): `040141`", "Operation: `decode`", "lua-asn1 differs from the fixture; opentlv meets it",
+                     "root.value: expected '41', observed '42'", "Observed by opentlv:", "Observed by lua-asn1:",
+                     "Reproduce (exit code 3):", "git checkout " + "a" * 40, "--fixture different", "Runtime: Lua 5.2.4"):
+            self.assertIn(text, markdown)
+        self.assertIn("Input (3 bytes): `040141`", stdout)
+
+    def test_report_separates_possible_defects_from_declared_gaps(self):
+        _, _, _, _, markdown = self.reporting_run()
+        possible, declared_gaps = markdown.split("## Declared by the fixture: not defects")
+        self.assertIn("### different", possible)
+        self.assertNotIn("gap", possible)
+        self.assertIn("| gap | unsupported | accepted | rejected | documented matrix reason |", declared_gaps)
+
+    def test_clean_report_has_no_mismatch_section(self):
+        fixtures = [shared("same"), {**declared(), "reason": "a|b"}]
+        results = {"opentlv": {"same": accepted(), "declared": accepted()},
+                   "lua-asn1": {"same": accepted(projected=True), "declared": accepted(projected=True)}}
+        markdown = Path(self.temp.name) / "clean.md"
+        code, stdout, _ = self.command(fixtures, results, "--report", str(markdown))
+        self.assertEqual(code, 0)
+        self.assertNotIn("## Mismatches", stdout)
+        text = markdown.read_text(encoding="utf-8")
+        self.assertIn("Status: passed", text)
+        self.assertNotIn("## Mismatches", text)
+        self.assertIn("a\\|b", text)
+
+    def test_when_every_library_differs_the_fixture_is_checked_first(self):
+        _, _, _, report, markdown = self.reporting_run(accepted(leaf("04", "43")))
+        self.assertEqual(report["fixtures"][0]["differing_libraries"], ["opentlv", "lua-asn1"])
+        self.assertIn("Every library differs from the fixture", markdown)
+
+    def test_report_is_deterministic_and_flags_modified_files(self):
+        first, second = self.reporting_run()[3:], self.reporting_run()[3:]
+        self.assertEqual(first, second)
+        report = differential.failure_report(ValueError("x"), {"corpus": "c", "corpus_sha256": None,
+                                                               "testlab": {"commit": "b" * 40, "modified": True}}, [], None, [])
+        self.assertIn("with uncommitted changes", differential.render_report(report))
+
+    def test_fixture_selection_keeps_corpus_order_and_rejects_unknown_ids(self):
+        fixtures = [shared("a"), shared("b"), shared("c")]
+        self.assertEqual([f["id"] for f in differential.select_fixtures(fixtures, ["c", "a"])], ["a", "c"])
+        self.assertEqual(differential.select_fixtures(fixtures, []), fixtures)
+        code, _, stderr, report, _ = self.reporting_run(None, "--fixture", "missing")
+        self.assertEqual(code, 1)
+        self.assertIn("Unknown fixture: missing", stderr)
+        self.assertEqual(report["status"], "failed")
+
+    def test_selected_fixture_runs_alone_and_a_declared_one_can_be_read(self):
+        code, _, _, report, _ = self.reporting_run(None, "--fixture", "different")
+        self.assertEqual(code, differential.MISMATCH_EXIT)
+        self.assertEqual([f["id"] for f in report["fixtures"]], ["different"])
+        self.assertEqual(shlex.split(report["reproduce"][-1])[-2:], ["--fixture", "different"])
+        code, _, _, report, _ = self.reporting_run(None, "--fixture", "gap")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["fixtures"][0]["observed"]["lua-asn1"]["status"], "rejected")
+
+    def failed_run(self, fixtures, adapter):
+        self.corpus.write_text(json.dumps({"schema": 1, "fixtures": fixtures}), encoding="utf-8")
+        output, markdown = Path(self.temp.name) / "failed.json", Path(self.temp.name) / "failed.md"
+        with patch.object(differential, "load_receipt", return_value=self.receipt), \
+                patch.object(differential, "run_adapter", side_effect=adapter), \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            code = differential.main(["--fixtures", str(self.corpus), "--provenance", "provenance.json",
+                                      "--output", str(output), "--report", str(markdown)])
+        self.assertEqual(code, 1)
+        return json.loads(output.read_text(encoding="utf-8")), markdown.read_text(encoding="utf-8")
+
+    def test_crash_report_records_the_failing_input(self):
+        def crash(name, _adapter, _lua, _requests):
+            raise differential.FixtureFailure(f"{name} failed (139) at fixture second: native failure", "second")
+
+        report, markdown = self.failed_run([shared("first"), shared("second", "04 01 42", tree=leaf("04", "42"))], crash)
+        self.assertEqual(report["status"], "failed")
+        self.assertIn("native failure", report["error"])
+        self.assertEqual(report["failed_fixture"]["wire"], "040142")
+        self.assertEqual(report["runtime"], "Lua 5.2.4")
+        self.assertEqual(shlex.split(report["reproduce"][-1])[-2:], ["--fixture", "second"])
+        self.assertNotIn("summary", report)
+        for text in ("## Run failure: no verdict", "native failure", "`040142`", "Reproduce (exit code 1):"):
+            self.assertIn(text, markdown)
+
+    def test_library_reporting_unsupported_on_a_shared_fixture_names_it(self):
+        def adapter(name, _adapter, _lua, requests):
+            status = {"status": "unsupported", "detail": "no type"} if name == "lua-asn1" else accepted()
+            return {"adapter": name}, [{"id": r["id"], **status} for r in requests]
+
+        report, _ = self.failed_run([shared("gap-claimed-shared")], adapter)
+        self.assertIn("is shared, but lua-asn1 reports: no type", report["error"])
+        self.assertEqual(report["failed_fixture"]["id"], "gap-claimed-shared")
+
+    def test_adapter_startup_failure_has_no_failing_input(self):
+        def startup(name, _adapter, _lua, _requests):
+            raise differential.FixtureFailure(f"{name} failed at fixture none (adapter startup)", "none (adapter startup)")
+
+        report, _ = self.failed_run([shared("first")], startup)
+        self.assertNotIn("failed_fixture", report)
+        self.assertNotIn("--fixture", shlex.split(report["reproduce"][-1]))
+
+    def test_invalid_corpus_still_writes_a_failure_report(self):
+        self.corpus.write_text("{}", encoding="utf-8")
+        output = Path(self.temp.name) / "invalid.json"
+        with redirect_stderr(io.StringIO()):
+            code = differential.main(["--fixtures", str(self.corpus), "--output", str(output)])
+        self.assertEqual(code, 1)
+        report = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(report["status"], "failed")
+        self.assertIn("Expected fixture schema 1", report["error"])
+        self.assertNotIn("runtime", report)
+        self.assertIn("## Run failure", differential.render_report(report))
+
+    def test_unwritable_failure_report_does_not_hide_the_run_failure(self):
+        self.corpus.write_text("{}", encoding="utf-8")
+        blocker = Path(self.temp.name) / "file"
+        blocker.write_text("", encoding="utf-8")
+        with redirect_stderr(io.StringIO()) as stderr:
+            code = differential.main(["--fixtures", str(self.corpus), "--output", str(blocker / "report.json")])
+        self.assertEqual(code, 1)
+        self.assertIn("Expected fixture schema 1", stderr.getvalue())
+        self.assertIn("Could not write the failure report", stderr.getvalue())
+
+
+class OriginTests(unittest.TestCase):
+    def test_corpus_inside_the_repository_is_a_portable_path(self):
+        self.assertEqual(differential.describe_origin(differential.DEFAULT_FIXTURES)["corpus"], "differential/fixtures/seed.json")
+        self.assertEqual(differential.describe_origin(differential.DEFAULT_FIXTURES)["corpus_sha256"],
+                         digest(differential.DEFAULT_FIXTURES))
+
+    def test_commands_are_quoted_and_need_no_commit(self):
+        origin = {"corpus": "my corpus.json", "testlab": {"commit": None, "modified": None}}
+        steps = differential.reproduction_steps(origin, ["a"])
+        self.assertEqual(steps[0], differential.SETUP_COMMAND)
+        self.assertEqual(shlex.split(steps[1])[2:], ["--fixtures", "my corpus.json", "--fixture", "a"])
+
+    def test_revision_reports_modified_files_and_survives_missing_git(self):
+        def git(command, **_):
+            return Mock(stdout="abc\n" if "rev-parse" in command else " M README.md\n")
+
+        with patch.object(differential.subprocess, "run", side_effect=git):
+            self.assertEqual(differential.testlab_revision(), {"commit": "abc", "modified": True})
+        with patch.object(differential.subprocess, "run", side_effect=FileNotFoundError("git")):
+            self.assertEqual(differential.testlab_revision(), {"commit": None, "modified": None})
+
+
+class ReportCheckTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.path = Path(self.temp.name) / "report.json"
+        self.result = {"id": "probe", "outcome": "mismatch", "wire": "010101", "operation": "decode",
+                       "schema": {"type": "boolean"}, "expected": {"result": "accept"},
+                       "differences": ["lua-asn1 root.value: expected '01', observed 'ff'"],
+                       "differing_libraries": ["lua-asn1"],
+                       "observed": {"opentlv": {"status": "accepted"}, "lua-asn1": {"status": "accepted"}},
+                       "reproduce": [differential.SETUP_COMMAND, "python3 scripts/run_differential.py --fixture probe"]}
+        self.report = {"status": "mismatch", "runtime": "Lua 5.2.4", "provenance": "/run/provenance.json",
+                       "packages": {"opentlv": {"version": "0.3.0"}, "lua-asn1": {"version": "2.2.1"}},
+                       "fixtures": [self.result]}
+
+    def check(self, report=None, rerun=None, status=differential.MISMATCH_EXIT):
+        self.path.write_text(json.dumps(report or self.report), encoding="utf-8")
+        commands = []
+
+        def fake_run(command, **_):
+            commands.append(command)
+            Path(command[command.index("--output") + 1]).write_text(
+                json.dumps({"fixtures": [rerun or self.result]}), encoding="utf-8")
+            return Mock(returncode=status)
+
+        with patch.object(check_report.subprocess, "run", side_effect=fake_run):
+            return check_report.check_report(self.path), commands
+
+    def test_complete_report_is_reproduced_with_its_own_command_and_receipt(self):
+        count, commands = self.check()
+        self.assertEqual(count, 1)
+        self.assertEqual(commands[0][:4], ["python3", "scripts/run_differential.py", "--fixture", "probe"])
+        self.assertEqual(commands[0][4:6], ["--provenance", "/run/provenance.json"])
+
+    def test_incomplete_reports_fail(self):
+        no_field = {k: v for k, v in self.result.items() if k != "wire"}
+        one_observation = {**self.result, "observed": {"opentlv": {"status": "accepted"}}}
+        for changes, message in [({"status": "passed"}, "not mismatch"), ({"runtime": None}, "runtime"),
+                                 ({"packages": {"opentlv": {"version": "0.3.0"}}}, "package versions"),
+                                 ({"fixtures": []}, "no mismatch"), ({"fixtures": [no_field]}, "no wire"),
+                                 ({"fixtures": [one_observation]}, "lacks an observation")]:
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                self.check({**self.report, **changes})
+
+    def test_reproduction_must_give_the_same_verdict_and_observations(self):
+        with self.assertRaisesRegex(ValueError, "exited 0, not 3"):
+            self.check(status=0)
+        with self.assertRaisesRegex(ValueError, "different result"):
+            self.check(rerun={**self.result, "differences": []})
+
+    def test_command_reports_a_failed_check(self):
+        self.path.write_text(json.dumps({"status": "passed"}), encoding="utf-8")
+        with redirect_stderr(io.StringIO()) as stderr:
+            self.assertEqual(check_report.main([str(self.path)]), 1)
+        self.assertIn("not mismatch", stderr.getvalue())
 
 
 if __name__ == "__main__":

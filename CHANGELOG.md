@@ -7,12 +7,20 @@
 
 ### Changed
 
+- Normalize the LICENSE copyright holder to `Marek Cingel`, matching the source headers
+  and every other OpenTLV repository. (#6)
 - Install the OpenTLV Lua package under test from luarocks.org with `luarocks` in every
   setup, verifying the downloaded source rock, built Core commit and installed files
   against the pin. External libraries remain cached. (#4)
 
 ### Added
 
+- Actionable differential reports: input bytes, operation, schema, expectation, both
+  libraries' outputs and errors, runtime, package versions, TestLab commit and per-failure
+  reproduction commands, with possible defects kept apart from declared unsupported or
+  inconclusive fixtures. Run failures also write a report naming any failing input. Add
+  `--report` and `--fixture`, upload reports from Fast, and require the deliberate mismatch
+  probe's report to reproduce itself. (#6)
 - Deterministic ASN.1 BER differential corpus of primitive, constructed, nested, tag and
   length boundary, truncated and malformed cases, with a declared support classification,
   category, description and pin-checked reproduction metadata. Fast runs it through both

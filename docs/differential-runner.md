@@ -19,8 +19,10 @@ python3 scripts/run_differential.py
 
 The runner uses the newest complete passed setup in `build/dependency-runs`.
 `--runs-dir DIR` searches elsewhere and `--provenance FILE` selects one receipt.
-`--fixtures FILE` selects a corpus, and `--output FILE` also writes every adapter
-observation as JSON. Each line of the output shows a fixture's outcome:
+`--fixtures FILE` selects a corpus and `--fixture ID` runs only that fixture; repeat it
+for more. `--output FILE` also writes every adapter observation as JSON, and
+`--report FILE` writes a [Markdown report](#mismatch-reports). Each line of the output
+shows a fixture's outcome:
 
 ```text
 pass         nested-sequence
@@ -39,6 +41,8 @@ python3 scripts/run_differential.py --fixtures tests/fixtures/differential_misma
 mismatch     boolean-noncanonical-as-shared
              lua-asn1 root.value: expected '01', observed 'ff'
 ```
+
+The [mismatch report](#mismatch-reports) follows those lines.
 
 ## Outcomes and exit codes
 
@@ -64,8 +68,52 @@ and a crash on one still fails the run.
 A run failure is never reported as a comparison outcome. It covers an invalid
 corpus, an unusable receipt, a crash, a timeout, a resource limit, a malformed
 adapter response, a `shared` fixture an adapter reports as unsupported, and a corpus
-that compared no `shared` fixture. Mismatch has its own code so that no
-infrastructure failure, including an uncaught Python error, can look like one.
+that compared no `shared` fixture, unless `--fixture` asked for specific ones. Mismatch
+has its own code so that no infrastructure failure, including an uncaught Python error,
+can look like one.
+
+## Mismatch reports
+
+A mismatch prints a report after the summary. `--report FILE` saves the same details as
+Markdown and `--output FILE` as JSON, whatever the outcome. Each mismatch records:
+
+- the fixture id, description, operation, input bytes, schema and expectation;
+- the differences, and which library differs from the fixture;
+- each library's complete observation, including its error text;
+- commands that reproduce only this fixture, and the exit code to expect.
+
+The report also names the Lua runtime, platform, setup receipt, both packages with their
+commits and acquisition, the corpus and its SHA-256, and the TestLab commit. It warns
+when the checkout had uncommitted changes, because the commit alone may not reproduce
+those. It has no timestamps, so two runs with the same inputs give identical reports.
+
+Fixtures from a corpus outside this repository keep their absolute path, so its command
+only works where that file exists. Its fixture definition is still in the report. A pull
+request's Fast run records the merge commit GitHub created for it, so fetch it first with
+`git fetch origin COMMIT` if `git checkout` cannot find it.
+
+The report keeps three kinds of result apart, because only the first asks for a fix:
+
+| Report section | Applies to | What to do |
+| --- | --- | --- |
+| Mismatches: possible defects | A `shared` fixture that a library did not meet | Investigate; the exit code is 3 |
+| Declared by the fixture: not defects | `unsupported` and `inconclusive` fixtures | Nothing; each lists its reason and both library statuses |
+| Run failure: no verdict | Anything that stopped the run | Fix or investigate; the exit code is 1 |
+
+A mismatch is a possible defect, not a finding. If only one library differs, read its
+observation first. If every library differs, check the fixture first. If the library's
+documentation or the capability audit explains the difference, declare the fixture
+`unsupported` with that reason; otherwise report it to the library. The deliberate probe
+ends at this step on purpose: it shows lossy lua-asn1 typed values, not a lua-asn1 defect.
+
+A run failure also writes both files, with the error and the failing fixture's input
+when one is known. This covers a crash, a timeout and a `shared` fixture that an adapter
+reports as unsupported. Other adapter output is lost in a crash, so it only records
+the error, and a crash or timeout can still be a real library defect.
+
+`scripts/check_report.py FILE` checks a JSON mismatch report: it needs the fields above,
+reruns each mismatch's final command with the same receipt, and requires exit code 3 and
+an identical result. It does not rerun the checkout or setup steps.
 
 ## How a run works
 
@@ -205,17 +253,18 @@ declaring it instead.
 - Lua 5.2 on Linux/WSL is the only supported configuration, as for dependency setup.
 - A `pass` shows the libraries agree on the bytes in the corpus, not that either is
   correct in general or that lua-asn1 is a validating decoder.
-- Mismatch reports with per-failure reproduction details and CI artifacts are planned in
-  [issue #6](https://github.com/OpenTLV/opentlv-testlab/issues/6). `--output` retains
-  observations and corpus metadata, but is not that report.
+- A report classifies a mismatch for investigation; it cannot decide which library is
+  wrong.
 
 ## Verification
 
-Fast runs the seed fixtures and the BER corpus, and requires the mismatch probe to exit
-with code 3. Python tests check the corpus's coverage and metadata. They also cover
-eligibility, classification, process failures and receipt checks using stand-in adapter
-processes, so they run on Windows without Lua. Only the Fast steps and the commands
-above exercise the Lua adapters and real libraries.
+Fast runs the seed fixtures and the BER corpus, requires the mismatch probe to exit with
+code 3 and checks that the probe's report reproduces itself. It uploads all three reports
+as the `differential-reports` artifact, even after a failure, and the setup receipts as
+`dependency-provenance`. Python tests check the corpus's coverage and metadata. They also
+cover eligibility, classification, reports, process failures and receipt checks using
+stand-in adapter processes, so they run on Windows without Lua. Only the Fast steps and
+the commands above exercise the Lua adapters and real libraries.
 
 Local verification on 2026-10-30 used WSL with Lua 5.2.4, a fresh OpenTLV Lua v0.3.0
 installation from luarocks.org and the cached lua-asn1 v2.2.1. The seed fixtures gave 22 pass,
@@ -228,5 +277,14 @@ Local verification of the BER corpus on 2026-10-30 used the same configuration a
 freshly installed OpenTLV Lua v0.3.0. It gave 102 pass, 0 mismatch, 43 unsupported and
 24 inconclusive with exit code 0, and two runs produced identical reports. Hosted Fast
 remains to be verified on the PR.
+
+Local verification of the reports on 2026-10-30 used the same configuration. The mismatch
+probe's report gave exit code 3, named lua-asn1 for both mismatches, and `check_report.py`
+reproduced both with identical results. Two BER runs produced byte-identical JSON and
+Markdown reports. A failure injected at adapter startup wrote a failure report. A crash at
+a specific fixture was exercised only with stand-in processes. A checkout shared with
+Windows shows as modified under WSL because of line endings, so those local reports carry
+the uncommitted-changes warning. Hosted Fast and its artifact upload remain to be verified
+on the PR.
 
 [source]: https://github.com/OpenTLV/opentlv-lua/blob/v0.3.0/docs/api.md#source-preservation

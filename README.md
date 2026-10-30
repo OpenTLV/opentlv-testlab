@@ -15,7 +15,7 @@ Issue #2 establishes this scope and an executable upstream capability audit.
 Issue #3 adds reproducible dependency setup, an external cache and fresh OpenTLV
 release installation. Issue #4 adds the [differential runner](docs/differential-runner.md)
 and its two library adapters. Issue #5 adds the [BER fixture corpus](docs/differential-runner.md#ber-corpus).
-Mismatch reports remain follow-up work in [epic #1](https://github.com/OpenTLV/opentlv-testlab/issues/1).
+Issue #6 adds [mismatch reports](docs/differential-runner.md#mismatch-reports).
 External comparison dependencies belong only in TestLab.
 
 ## Set up both Lua dependencies
@@ -48,8 +48,10 @@ python3 scripts/run_differential.py --fixtures differential/fixtures/asn1-ber.js
 The first command runs the small seed fixtures and the second the BER corpus.
 Each fixture ends as `pass`, `mismatch`, `unsupported` or `inconclusive`. The command
 exits 0 when every shared fixture passes, 3 on a mismatch and 1 when the run itself
-fails. See the [runner guide](docs/differential-runner.md) for outcomes, the
-normalized representation, the fixture format and current limits.
+fails. A mismatch prints its input, both outputs, versions and reproduction commands;
+`--output FILE` and `--report FILE` also save them as JSON and Markdown. See the
+[runner guide](docs/differential-runner.md) for outcomes, reports, the normalized
+representation, the fixture format and current limits.
 
 ## Run the capability audit
 
@@ -72,8 +74,8 @@ runtime or timeout fails the command.
 The `Fast` workflow runs the Python tests and full setup on Ubuntu with Lua 5.2,
 restores only the exact external cache key, then verifies an offline cache hit. It
 runs the seed fixtures and the BER corpus, requires the deliberate mismatch probe to
-exit with code 3, and uploads provenance and logs. The manual suite is planned in
-issue #7.
+exit with code 3 and its report to reproduce itself, and uploads differential reports,
+provenance and logs. The manual suite is planned in issue #7.
 
 ## License
 
