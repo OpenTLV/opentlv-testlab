@@ -200,7 +200,8 @@ def load_receipt(path):
     return {"path": path, "lua": lua, "runtime": configuration["lua"]["version"],
             "platform": configuration["platform"], "adapters": adapters,
             "packages": {"opentlv": {"version": release["version"], "commit": release["commit"],
-                                     "core_commit": opentlv["core_commit"], "acquisition": opentlv["acquisition"]},
+                                     "core_commit": opentlv["core_commit"], "acquisition": opentlv["acquisition"],
+                                     "source": opentlv["source"]},
                          "lua-asn1": {"version": pin["version"], "commit": pin["commit"]}}}
 
 

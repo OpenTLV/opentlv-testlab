@@ -1,6 +1,7 @@
 {
   "schema": 1,
   "repository": "OpenTLV/opentlv-lua",
+  "server": "https://luarocks.org",
   "version": "0.3.0",
   "tag": "v0.3.0",
   "commit": "8fff4a001f34117647a7d59ff9b4602a2b330453",
@@ -8,7 +9,6 @@
   "release_id": 427813424,
   "rock_version": "0.3.0-1",
   "assets": {
-    "release-manifest.json": "a41e4a41f95572720de2f22b46ed07cd2403b0099294d6d3654b44180713f238",
     "opentlv-0.3.0-1.rockspec": "4bf360627a38eca3c25a61df6d7d530909bd40aa774b8d3bba48385c3304c7aa",
     "opentlv-0.3.0-1.src.rock": "83139e9aa079c3e9bba5ec1f3733ba469a2ca77d44d1bd1c2668077f6a6ef70e"
   }

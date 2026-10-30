@@ -29,10 +29,10 @@ python3 -m unittest discover -s tests -v
 python3 scripts/setup_lua.py --lua lua5.2
 ```
 
-This stages the pinned external library using its upstream Makefile. It then
-**freshly downloads and installs OpenTLV Lua v0.3.0** from its published source
-rock into a unique run directory, verifies both installed libraries and records
-paths, versions, hashes and provenance. Only the external library is cached.
+This stages the pinned external library using its upstream Makefile and caches it.
+It then **freshly installs OpenTLV Lua v0.3.0 from luarocks.org with `luarocks`**
+into a unique run directory, verifies both installed libraries and records paths,
+versions, hashes and provenance. OpenTLV is the package under test and is never cached.
 See [dependency setup](docs/dependencies.md) for cache keys, offline verification,
 custom tool paths, receipts and supported-platform limits.
 

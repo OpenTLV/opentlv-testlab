@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Install the OpenTLV Lua package under test from luarocks.org with `luarocks` in every
+  setup, verifying the downloaded source rock, built Core commit and installed files
+  against the pin. External libraries remain cached. (#4)
+
 ### Added
 
 - Lua differential runner with independent OpenTLV Lua and lua-asn1 adapters over the

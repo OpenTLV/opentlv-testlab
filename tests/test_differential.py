@@ -319,7 +319,8 @@ class ReceiptTests(unittest.TestCase):
                               "platform": {"system": "Linux"}},
             "external": {"pin": self.pin, "directory": str(Path(self.temp.name) / "cache"),
                          "module_directory": "/cache/modules"},
-            "opentlv": {"pin": self.release, "acquisition": "fresh", "core_commit": "c" * 40,
+            "opentlv": {"pin": self.release, "acquisition": "fresh", "source": "https://luarocks.org",
+                        "core_commit": "c" * 40,
                         "environment": {"LUA_PATH": "/tree/?/init.lua", "LUA_CPATH": "/tree/?.so"},
                         "installed_files": {str(self.module.relative_to(self.tree)): digest(self.module)}}}
         self.path = self.run_dir / "provenance.json"
@@ -345,6 +346,7 @@ class ReceiptTests(unittest.TestCase):
         self.assertEqual(adapters["lua-asn1"]["module"], "/cache/modules/asn1/init.lua")
         self.assertEqual(adapters["opentlv"]["module"], str(self.tree / "lib/lua/5.2/opentlv/_core.so"))
         self.assertEqual(receipt["packages"]["opentlv"]["acquisition"], "fresh")
+        self.assertEqual(receipt["packages"]["opentlv"]["source"], "https://luarocks.org")
 
     def test_unusable_receipts_fail_closed(self):
         external_only = {k: v for k, v in self.report.items() if k != "opentlv"}

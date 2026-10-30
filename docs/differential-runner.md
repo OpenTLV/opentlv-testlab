@@ -170,7 +170,7 @@ using stand-in adapter processes, so they also run on Windows without Lua. Only
 the Fast steps and the commands above exercise the Lua adapters and real libraries.
 
 Local verification on 2026-10-30 used WSL with Lua 5.2.4, a fresh OpenTLV Lua v0.3.0
-installation and the cached lua-asn1 v2.2.1. The seed fixtures gave 22 pass,
+installation from luarocks.org and the cached lua-asn1 v2.2.1. The seed fixtures gave 22 pass,
 7 unsupported and 5 inconclusive, and the mismatch probe gave 2 mismatches and exit
 code 3. Real-library runs also confirmed that inherited Lua settings are ignored,
 that neither adapter's path can load the other library, and that two runs produce
