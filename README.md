@@ -19,6 +19,7 @@ binding repository.
 | [Dependency setup](docs/dependencies.md) | Installation, cache keys, provenance and pin changes |
 | [Differential runner](docs/differential-runner.md) | Outcomes, reports, the fixture format and the BER corpus |
 | [Fast gate and extended suite](docs/ci.md) | What each workflow checks and how to read the result |
+| [asn1c reference adapter](docs/asn1c-reference.md) | The optional C reference: pin, setup, adapter contract and what asn1c can decide |
 
 ## Reproduce a comparison locally
 
@@ -98,6 +99,8 @@ runtime or timeout fails the command.
 | `python3 scripts/check_report.py FILE` | Rerun each mismatch in a JSON report and require the same result |
 | `python3 scripts/check_asn1.py` | Verify the lua-asn1 pin and run the capability audit |
 | `python3 scripts/run_extended.py` | Run the [extended suite](docs/ci.md#extended-suite) locally |
+| `python3 scripts/setup_asn1c.py` | Build asn1c, generate the schema and audit the adapter; see the [asn1c guide](docs/asn1c-reference.md) |
+| `python3 scripts/check_asn1c.py` | Rerun the asn1c capability probes on the adapter from a passed setup |
 
 ## Supported BER subset
 
@@ -149,6 +152,23 @@ explains the difference, declare the fixture `unsupported` with that reason; oth
 report it to the library. `--output` and `--report` save everything needed, including
 the bytes, both results, versions and reproduction commands.
 
+## asn1c reference adapter
+
+An optional second reference builds [`vlm/asn1c`](https://github.com/vlm/asn1c) v0.9.29 from
+its verified release archive, generates C code from a versioned TestLab schema and audits the
+resulting adapter against 71 committed probes. It needs only Python, a C compiler and GNU Make
+on Linux or WSL, and nothing from the Lua setup:
+
+```sh
+python3 scripts/setup_asn1c.py
+python3 scripts/check_asn1c.py
+```
+
+asn1c decodes the long and indefinite lengths, high tags, tag classes and types that lua-asn1
+lacks, and its DER encoder canonicalizes. It checks no DER restriction when decoding and has no
+CER codec, so it is no oracle for those; the [guide](docs/asn1c-reference.md#capability-audit)
+classifies every probe. Later issues compare it with OpenTLV; it does not yet.
+
 ## Versions and cache
 
 [`dependencies/lua-asn1.json`](dependencies/lua-asn1.json) and
@@ -161,6 +181,9 @@ commits and SHA-256 digests. The two libraries are treated differently:
 | Source | Commit-addressed upstream files | luarocks.org, as a user installs it |
 | Cache | `build/dependency-cache`, keyed by pin, Lua, platform and Make | Never cached; every setup installs it anew |
 
+[`dependencies/asn1c.json`](dependencies/asn1c.json) pins the asn1c release archive by digest;
+its build is cached in `build/dependency-cache` under its own key, like lua-asn1.
+
 A changed cached file fails the run rather than being replaced. Print the current key
 with `python3 scripts/setup_lua.py --lua lua5.2 --print-cache-key`. A pin changes only
 through a reviewed update, as described in [Change a pin](docs/dependencies.md#change-a-pin);
@@ -171,7 +194,8 @@ never patch lua-asn1 or switch to a fork to make a comparison pass.
 The `Fast` workflow gates every pull request and every push to `main`. It runs the Python
 tests and full setup with an exact-key lua-asn1 cache, verifies an offline cache hit, runs
 the seed fixtures and the BER corpus, requires the deliberate mismatch probe to exit with
-code 3 and reproduce its report, and uploads reports, provenance and logs.
+code 3 and reproduce its report, and uploads reports, provenance and logs. A separate job
+builds the asn1c reference adapter and runs its capability audit.
 
 The `Extended` workflow is started by hand from the **Actions** tab and is not required
 for a pull request. On x86-64 and arm64 Ubuntu, it starts without a cache, sets up twice,
@@ -200,4 +224,6 @@ the result.
 
 TestLab is MIT-licensed; see [LICENSE](LICENSE).
 The downloaded external sources retain Kaarle Ritvanen's MIT notice and are
-ignored by Git. No upstream source is vendored into the tracked tree.
+ignored by Git. asn1c and the runtime it copies into generated code keep Lev Walkin's
+BSD-2-Clause notice, which setup preserves in the cache; both stay under `build/`.
+No upstream source is vendored into the tracked tree.

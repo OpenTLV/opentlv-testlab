@@ -20,6 +20,15 @@
 
 ### Added
 
+- Optional asn1c reference adapter: `scripts/setup_asn1c.py` builds `vlm/asn1c` v0.9.29 from
+  its digest-pinned release archive into an exact-key cache, generates the versioned
+  `TestLabReference-1` schema twice to require deterministic output, and compiles the generated
+  code with a C adapter that returns normalized typed values, DER re-encodings and error
+  categories. 71 committed probes classify BER decoding, DER decoding and encoding and CER as
+  supported, unsupported or not comparable, and setup and `scripts/check_asn1c.py` fail on any
+  changed observation. A separate Fast job runs it; `docs/asn1c-reference.md` records the pin,
+  provenance, license, alternatives, contract and findings. No OpenTLV dependency or Core option
+  is added. (#20)
 - Contributor documentation: the README now takes a contributor from installation to a
   reproduced comparison, and covers the commands, supported BER subset, fixture contribution,
   result interpretation, version and cache policy, CI and limits. The guides add step-by-step
