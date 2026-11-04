@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "module": "TestLabReference-1",
+  "types": {
+    "Flag": {"kind": "boolean", "identifier": "01"},
+    "Number": {"kind": "integer", "identifier": "02"},
+    "Bits": {"kind": "bit_string", "identifier": "03"},
+    "Octets": {"kind": "octet_string", "identifier": "04"},
+    "Text": {"kind": "ia5string", "identifier": "16"},
+    "Nothing": {"kind": "null", "identifier": "05"},
+    "Identifier": {"kind": "object_identifier", "identifier": "06"},
+    "Pair": {
+      "kind": "sequence",
+      "identifier": "30",
+      "fields": [
+        {"name": "flag", "type": {"kind": "boolean", "identifier": "01"}},
+        {"name": "count", "type": {"kind": "integer", "identifier": "02"}}
+      ]
+    },
+    "OptionalPair": {
+      "kind": "sequence",
+      "identifier": "30",
+      "fields": [
+        {"name": "flag", "optional": true, "type": {"kind": "boolean", "identifier": "80"}},
+        {"name": "count", "optional": true, "type": {"kind": "integer", "identifier": "81"}}
+      ]
+    },
+    "DefaultFlag": {
+      "kind": "sequence",
+      "identifier": "30",
+      "fields": [
+        {"name": "flag", "default": {"kind": "boolean", "value": false},
+         "type": {"kind": "boolean", "identifier": "01"}},
+        {"name": "count", "type": {"kind": "integer", "identifier": "02"}}
+      ]
+    },
+    "NumberList": {"kind": "sequence_of", "identifier": "30", "item": {"kind": "integer", "identifier": "02"}},
+    "NumberSet": {"kind": "set_of", "identifier": "31", "item": {"kind": "integer", "identifier": "02"}},
+    "TaggedSet": {
+      "kind": "set",
+      "identifier": "31",
+      "fields": [
+        {"name": "first", "type": {"kind": "integer", "identifier": "80"}},
+        {"name": "second", "type": {"kind": "boolean", "identifier": "81"}}
+      ]
+    },
+    "Alternative": {
+      "kind": "choice",
+      "alternatives": [
+        {"name": "number", "type": {"kind": "integer", "identifier": "02"}},
+        {"name": "text", "type": {"kind": "ia5string", "identifier": "16"}}
+      ]
+    },
+    "Nested": {
+      "kind": "sequence",
+      "identifier": "30",
+      "fields": [
+        {"name": "name", "type": {"kind": "octet_string", "identifier": "04"}},
+        {"name": "pairs", "type": {"kind": "sequence_of", "identifier": "30", "item": {"ref": "Pair"}}}
+      ]
+    },
+    "Implicit30": {"kind": "octet_string", "identifier": "9e"},
+    "Explicit5": {"kind": "explicit", "identifier": "a5", "inner": {"kind": "integer", "identifier": "02"}},
+    "HighTag31": {"kind": "octet_string", "identifier": "9f1f"},
+    "HighTag200": {"kind": "octet_string", "identifier": "9f8148"},
+    "Application1": {"kind": "integer", "identifier": "41"},
+    "Private2": {"kind": "octet_string", "identifier": "c2"}
+  }
+}

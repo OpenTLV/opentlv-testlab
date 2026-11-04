@@ -20,6 +20,18 @@
 
 ### Added
 
+- DER canonical differential: `scripts/run_der_differential.py` decodes and encodes 98
+  hand-written fixtures with OpenTLV Lua v0.3.0 and the asn1c reference, and judges each library
+  against X.690 instead of trusting either. Fixtures cover high tag numbers, short and long length
+  boundaries, zero-length, primitive, constructed and nested values, and noncanonical and malformed
+  variants. Encoders are compared byte for byte only for the same type and value, and each library
+  decodes the other's encoding. Errors are normalized to `empty`, `truncated`, `trailing` and
+  `invalid`, and asn1c's DER verdict requires its canonical re-encoding. A fixture declares what a
+  library cannot decide, citing documentation or a capability probe, and a limitation that no
+  longer shows fails the run. Reports give the outcome matrix, coverage denominators, every
+  observation and per-fixture reproduction. No OpenTLV defect was found. A separate Fast job runs
+  the corpus and a deliberate mismatch probe, `check_report.py` now also reruns DER reports, and
+  `docs/der-differential.md` documents the checks, corpus, limitations and results. (#21)
 - Optional asn1c reference adapter: `scripts/setup_asn1c.py` builds `vlm/asn1c` v0.9.29 from
   its digest-pinned release archive into an exact-key cache, generates the versioned
   `TestLabReference-1` schema twice to require deterministic output, and compiles the generated

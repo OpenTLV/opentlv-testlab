@@ -5,15 +5,16 @@
 
 TestLab can build [`vlm/asn1c`](https://github.com/vlm/asn1c), generate C code from a
 small TestLab ASN.1 schema and query it through one adapter process. The adapter is an
-independent C reference for later BER, DER and CER comparisons with OpenTLV
-([#21](https://github.com/OpenTLV/opentlv-testlab/issues/21),
-[#22](https://github.com/OpenTLV/opentlv-testlab/issues/22)). This page records which asn1c
+independent C reference for comparisons with OpenTLV: the
+[DER differential](der-differential.md) ([#21](https://github.com/OpenTLV/opentlv-testlab/issues/21))
+uses it, and BER and CER interoperability
+([#22](https://github.com/OpenTLV/opentlv-testlab/issues/22)) will. This page records which asn1c
 was selected, how it is built, what the adapter returns and what asn1c can and cannot decide.
 
 asn1c is a TestLab test tool. It is not a runtime, build or test dependency of OpenTLV Core
 or any binding, and it adds no Core build option. Generated code and the asn1c runtime are
 compiled only into the adapter, under `build/`. Nothing in this setup acquires or links
-OpenTLV; a comparison that does will acquire OpenTLV as the
+OpenTLV; a comparison that does, such as the DER differential, acquires OpenTLV as the
 [dependency policy](dependencies.md#fresh-opentlv-package-from-luarocks) requires.
 
 ## Why a second reference
@@ -328,7 +329,8 @@ not depend on it.
   adapter representation.
 - Typed values cannot show encoding details; see [typed values](#typed-values).
 - Only Linux and WSL with GCC were verified; the Extended suite does not run asn1c yet.
-- This adapter does not compare anything with OpenTLV. Its probes characterize asn1c only.
+- The probes characterize asn1c only. The [DER differential](der-differential.md) compares it
+  with OpenTLV and cites the probes that limit its verdicts.
 
 ## Verification
 

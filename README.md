@@ -20,6 +20,7 @@ binding repository.
 | [Differential runner](docs/differential-runner.md) | Outcomes, reports, the fixture format and the BER corpus |
 | [Fast gate and extended suite](docs/ci.md) | What each workflow checks and how to read the result |
 | [asn1c reference adapter](docs/asn1c-reference.md) | The optional C reference: pin, setup, adapter contract and what asn1c can decide |
+| [DER differential](docs/der-differential.md) | OpenTLV DER decoding and encoding against asn1c and X.690: checks, corpus, limitations and results |
 
 ## Reproduce a comparison locally
 
@@ -101,6 +102,7 @@ runtime or timeout fails the command.
 | `python3 scripts/run_extended.py` | Run the [extended suite](docs/ci.md#extended-suite) locally |
 | `python3 scripts/setup_asn1c.py` | Build asn1c, generate the schema and audit the adapter; see the [asn1c guide](docs/asn1c-reference.md) |
 | `python3 scripts/check_asn1c.py` | Rerun the asn1c capability probes on the adapter from a passed setup |
+| `python3 scripts/run_der_differential.py` | Compare OpenTLV DER with asn1c; see the [DER guide](docs/der-differential.md) |
 
 ## Supported BER subset
 
@@ -167,7 +169,22 @@ python3 scripts/check_asn1c.py
 asn1c decodes the long and indefinite lengths, high tags, tag classes and types that lua-asn1
 lacks, and its DER encoder canonicalizes. It checks no DER restriction when decoding and has no
 CER codec, so it is no oracle for those; the [guide](docs/asn1c-reference.md#capability-audit)
-classifies every probe. Later issues compare it with OpenTLV; it does not yet.
+classifies every probe.
+
+## DER comparison with asn1c
+
+With both setups in place, the DER differential decodes and encodes 98 hand-written fixtures with
+OpenTLV Lua and asn1c, and judges each library against X.690 instead of trusting either:
+
+```sh
+python3 scripts/run_der_differential.py
+```
+
+It covers high tag numbers, length boundaries, zero-length and nested values, canonical encodings
+and their noncanonical and malformed variants, and checks both encoders byte for byte and on each
+other's output. A fixture declares what a library cannot decide, such as OpenTLV Lua's missing DER
+schema layer or asn1c's accepted empty INTEGER, so a reference limitation never reads as an OpenTLV
+defect. The [DER guide](docs/der-differential.md) lists the checks, coverage and results.
 
 ## Versions and cache
 
@@ -195,7 +212,8 @@ The `Fast` workflow gates every pull request and every push to `main`. It runs t
 tests and full setup with an exact-key lua-asn1 cache, verifies an offline cache hit, runs
 the seed fixtures and the BER corpus, requires the deliberate mismatch probe to exit with
 code 3 and reproduce its report, and uploads reports, provenance and logs. A separate job
-builds the asn1c reference adapter and runs its capability audit.
+builds the asn1c reference adapter and runs its capability audit, and a third runs the DER
+differential with its own mismatch probe.
 
 The `Extended` workflow is started by hand from the **Actions** tab and is not required
 for a pull request. On x86-64 and arm64 Ubuntu, it starts without a cache, sets up twice,
