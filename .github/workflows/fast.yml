@@ -74,3 +74,39 @@ jobs:
             build/dependency-runs/*/failure.json
             build/dependency-runs/*/*.log
           if-no-files-found: warn
+
+  asn1c-reference:
+    name: asn1c reference adapter
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Identify asn1c cache
+        id: asn1c-key
+        run: |
+          key=$(python3 scripts/setup_asn1c.py --print-cache-key)
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+      - name: Restore exact asn1c cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: build/dependency-cache/${{ steps.asn1c-key.outputs.key }}
+          key: ${{ steps.asn1c-key.outputs.key }}
+      - name: Build asn1c, generate the schema and audit the adapter
+        run: python3 scripts/setup_asn1c.py
+      - name: Verify the asn1c cache without network acquisition
+        run: python3 scripts/setup_asn1c.py --offline
+      - name: Rerun the capability audit on the built adapter
+        run: python3 scripts/check_asn1c.py --output build/asn1c-reports/capabilities.json
+      - name: Upload asn1c provenance, logs and audit report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: asn1c-reference
+          path: |
+            build/asn1c-runs/*/provenance.json
+            build/asn1c-runs/*/failure.json
+            build/asn1c-runs/*/*.log
+            build/asn1c-reports/
+          if-no-files-found: warn

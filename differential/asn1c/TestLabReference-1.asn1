@@ -1,0 +1,64 @@
+-- SPDX-License-Identifier: MIT
+-- Copyright (c) 2026 Marek Cingel
+--
+-- Version 1 of the TestLab asn1c reference schema. Each type is a probe target for one
+-- BER/DER behavior that lua-asn1 cannot compare. Never change a definition in place:
+-- copy the module to TestLabReference-2, so that every result names the schema it used.
+-- Names avoid asn1c's runtime file names (BOOLEAN.c, INTEGER.c, ...), which differ only
+-- in case.
+
+TestLabReference-1 DEFINITIONS EXPLICIT TAGS ::= BEGIN
+
+-- Universal primitives
+Flag ::= BOOLEAN
+Number ::= INTEGER
+Bits ::= BIT STRING
+Octets ::= OCTET STRING
+Text ::= IA5String
+Nothing ::= NULL
+Identifier ::= OBJECT IDENTIFIER
+
+-- Constructed types
+Pair ::= SEQUENCE {
+    flag BOOLEAN,
+    count INTEGER
+}
+
+OptionalPair ::= SEQUENCE {
+    flag [0] IMPLICIT BOOLEAN OPTIONAL,
+    count [1] IMPLICIT INTEGER OPTIONAL
+}
+
+DefaultFlag ::= SEQUENCE {
+    flag BOOLEAN DEFAULT FALSE,
+    count INTEGER
+}
+
+NumberList ::= SEQUENCE OF INTEGER
+
+NumberSet ::= SET OF INTEGER
+
+TaggedSet ::= SET {
+    first [0] IMPLICIT INTEGER,
+    second [1] IMPLICIT BOOLEAN
+}
+
+Alternative ::= CHOICE {
+    number INTEGER,
+    text IA5String
+}
+
+Nested ::= SEQUENCE {
+    name OCTET STRING,
+    pairs SEQUENCE OF Pair
+}
+
+-- Tag classes and tag-number forms
+Implicit30 ::= [30] IMPLICIT OCTET STRING
+Explicit5 ::= [5] EXPLICIT INTEGER
+HighTag31 ::= [31] IMPLICIT OCTET STRING
+HighTag200 ::= [200] IMPLICIT OCTET STRING
+Application1 ::= [APPLICATION 1] IMPLICIT INTEGER
+Private2 ::= [PRIVATE 2] IMPLICIT OCTET STRING
+
+END
