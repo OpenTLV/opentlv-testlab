@@ -263,7 +263,14 @@ def current_fixture(stdout, requests):
     return requests[completed]["id"] if completed < len(requests) else "none (after the final result)"
 
 
-def run_adapter(name, adapter, lua, requests):
+def check_decode_record(name, request, record):
+    status = record.get("status")
+    require(status in ("accepted", "rejected", "unsupported"), f"{name} returned status {status}")
+    require(status != "accepted" or isinstance(record.get("tree"), dict),
+            f"{name} accepted {request['id']} without a tree")
+
+
+def run_adapter(name, adapter, lua, requests, check=check_decode_record):
     """Crashes, timeouts and protocol errors are run failures, never comparison outcomes."""
     environment = clean_env()
     environment.update(adapter["environment"])
@@ -287,10 +294,7 @@ def run_adapter(name, adapter, lua, requests):
     require(identity.get("version") == adapter.get("version"), f"{name} reported an unexpected version")
     for request, record in zip(requests, records):
         require(record.get("id") == request["id"], f"{name} returned results out of order")
-        status = record.get("status")
-        require(status in ("accepted", "rejected", "unsupported"), f"{name} returned status {status}")
-        require(status != "accepted" or isinstance(record.get("tree"), dict),
-                f"{name} accepted {request['id']} without a tree")
+        check(name, request, record)
     return identity, records
 
 

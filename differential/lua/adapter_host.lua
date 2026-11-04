@@ -45,11 +45,15 @@ local identity = adapter.identity()
 identity.runtime = _VERSION
 emit(identity)
 
+-- A decode-only adapter exports decode(); one with more operations exports handle().
+local handle = adapter.handle or adapter.decode
 for _, request in ipairs(requests) do
-   request.wire = request.wire:gsub("..", function(octet)
-      return string.char(tonumber(octet, 16))
-   end)
-   local result = adapter.decode(request)
+   if request.wire then
+      request.wire = request.wire:gsub("..", function(octet)
+         return string.char(tonumber(octet, 16))
+      end)
+   end
+   local result = handle(request)
    result.id = request.id
    emit(result)
 end

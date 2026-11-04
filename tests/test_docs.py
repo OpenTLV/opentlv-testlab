@@ -7,7 +7,7 @@ import re
 import shlex
 import unittest
 
-from scripts import run_differential as differential
+from scripts import run_der_differential as der, run_differential as differential
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
@@ -64,11 +64,14 @@ class DocumentationTests(unittest.TestCase):
                     for argument in arguments:
                         if argument.startswith("--"):
                             self.assertIn(f'"{argument}"', source)
-                    if "--fixtures" in arguments:
-                        corpus = ROOT / arguments[arguments.index("--fixtures") + 1]
-                        identifiers = {fixture["id"] for fixture in differential.load_corpus(corpus)["fixtures"]}
-                        # The guide's "Add a fixture" command names an entry a contributor has yet to add.
-                        if page == README and "--fixture" in arguments:
+                    runner = der if script == "scripts/run_der_differential.py" else differential
+                    if "--fixtures" in arguments or runner is der:
+                        corpus = runner.DEFAULT_FIXTURES
+                        if "--fixtures" in arguments:
+                            corpus = ROOT / arguments[arguments.index("--fixtures") + 1]
+                        identifiers = {fixture["id"] for fixture in runner.load_corpus(corpus)["fixtures"]}
+                        # The BER guide's "Add a fixture" command names an entry a contributor has yet to add.
+                        if (page == README or runner is der) and "--fixture" in arguments:
                             self.assertIn(arguments[arguments.index("--fixture") + 1], identifiers)
         self.assertEqual(seen, {path.relative_to(ROOT).as_posix() for path in (ROOT / "scripts").glob("*.py")})
 
@@ -89,3 +92,25 @@ class DocumentationTests(unittest.TestCase):
         summary = (f"{counts['shared']} pass, 0 mismatch, {counts['unsupported']} unsupported, "
                    f"{counts['inconclusive']} inconclusive")
         self.assertIn(summary, README.read_text(encoding="utf-8"))
+
+    def test_der_fixture_example_is_valid(self):
+        text = (ROOT / "docs/der-differential.md").read_text(encoding="utf-8")
+        section = text.split("### Add a fixture", 1)[1].split("\n## ", 1)[0]
+        example = json.loads(re.search(r"```json\n(.*?)```", section, re.S).group(1))
+        der.validate_fixture(example, der.load_types())
+        corpus = der.load_corpus(der.DEFAULT_FIXTURES)
+        self.assertNotIn(example["id"], {fixture["id"] for fixture in corpus["fixtures"]})
+
+    def test_der_guide_states_the_committed_corpus_and_its_coverage(self):
+        text = (ROOT / "docs/der-differential.md").read_text(encoding="utf-8")
+        fixtures = der.load_corpus(der.DEFAULT_FIXTURES)["fixtures"]
+        results = [fixture["expected"]["result"] for fixture in fixtures]
+        limited = sum(bool(fixture.get("limitations")) for fixture in fixtures)
+        self.assertIn(f"holds {len(fixtures)}\nfixtures: {results.count('canonical')} canonical and "
+                      f"{results.count('reject')} rejections. {limited} declare a limitation.", text)
+        self.assertIn(f"{len(fixtures)} pass, 0 mismatch of {len(fixtures)} fixtures", text)
+        for name, counts in der.denominators(fixtures).items():
+            self.assertIn(f"| `{name}` | {counts['applies']} | {counts['judged']} |", text)
+        for category in der.CATEGORIES:
+            count = sum(fixture["category"] == category for fixture in fixtures)
+            self.assertRegex(text, rf"\| `{category}` \| {count} \|")

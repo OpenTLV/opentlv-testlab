@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "fixtures": [
+    {
+      "id": "default-omitted-undeclared",
+      "category": "constructed",
+      "description": "Deliberate mismatch: the DEFAULT limitation of the OpenTLV encoder is not declared",
+      "rule": "X.690 11.5: a DEFAULT value is not encoded",
+      "type": "DefaultFlag",
+      "wire": "30 03 02 01 05",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": false
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

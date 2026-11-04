@@ -35,8 +35,15 @@ with its capability audit, checks the cache offline and reruns the audit with
 `check_asn1c.py`. It uploads receipts, logs and the audit report as the `asn1c-reference`
 artifact, even after a failure. A cold build took 34 seconds locally.
 
-Both corpora stay in this gate. They are committed bytes with no clock, seed or network,
-and on the last hosted runs each finished within about a second. Moving the BER corpus out
+A third independent job, `DER differential against asn1c`, restores both exact-key caches,
+installs OpenTLV Lua fresh, builds and audits the asn1c adapter, and runs the
+[DER corpus](der-differential.md#der-corpus). Its deliberate mismatch probe must exit with
+code 3 and reproduce its report. It uploads both reports and setup receipts as the
+`der-differential-reports` artifact, even after a failure.
+
+The Lua corpora stay in this gate. They are committed bytes with no clock, seed or network,
+and on the last hosted runs each finished within about a second; the DER corpus took under a
+second locally. Moving the BER corpus out
 would save almost nothing and leave fixture changes untested until someone started the
 manual suite.
 
@@ -112,7 +119,8 @@ the rest still run.
   architecture and repeat runs, not new inputs.
 - It only tests Lua 5.2 on Ubuntu 24.04. Other Lua versions and platforms remain outside
   the [supported setup](dependencies.md#supported-setup-and-selection).
-- It does not run the asn1c reference adapter, which only `Fast` builds, on x86-64.
+- It does not run the asn1c reference adapter or the DER differential, which only `Fast`
+  runs, on x86-64.
 - Second-install comparison covers fixture results. The report headers differ, since they
   name each install's receipt.
 - It cannot show that a newer upstream release exists, and it does not repeat a binding's
