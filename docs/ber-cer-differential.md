@@ -300,8 +300,8 @@ same result.
 
 ## Security and triage
 
-Public CI runs only the committed, reviewed corpus. Exploratory or fuzzed inputs
-([#23](https://github.com/OpenTLV/opentlv-testlab/issues/23)) stay local until triage. A suspected
+Public CI runs only the committed, reviewed corpus. Inputs from [differential fuzzing](differential-fuzzing.md)
+stay local until triage, under its [disclosure policy](differential-fuzzing.md#disclosure-policy). A suspected
 vulnerability in OpenTLV goes to its private security reporting, and one in asn1c to upstream's
 private channel in its `SECURITY.md`, never to a public issue, CI artifact or fixture. Only a
 confirmed non-security defect goes to the repository that owns the library. A crash or timeout is a

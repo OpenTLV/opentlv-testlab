@@ -11,6 +11,8 @@ local opentlv = require("opentlv")
 local DER = opentlv.formats.der
 local CODECS = opentlv.codecs.asn1
 local MAX_DEPTH = 32 -- The library's default DER traversal depth.
+-- Tree Writer output never grows past its capacity (1024 by default); fixtures hold at most 4096 bytes.
+local CAPACITY = 8192
 -- Malformed or noncanonical input; LIMIT, allocation and API errors remain run failures.
 local REJECTED = {
    [opentlv.errors.TRUNCATED] = true,
@@ -212,7 +214,7 @@ end
 -- An argument the binding cannot represent, such as an INTEGER beyond int64, is unsupported.
 local function encode(schema, value)
    local ok, result = pcall(function()
-      local writer = opentlv.tree_writer(DER)
+      local writer = opentlv.tree_writer(DER, {capacity = CAPACITY})
       encode_value(writer, schema, value)
       return library(writer.finish, writer)
    end)

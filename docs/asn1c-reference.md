@@ -124,6 +124,27 @@ Runs default to `build/asn1c-runs/<uuid>`; set `--runs-dir` to change it. Each r
 Only `status: "passed"` is a usable setup. Nothing removes old runs. Local verification on
 2026-11-04 took 34 seconds for a cold setup and under 2 seconds for a warm one.
 
+### Sanitized build
+
+For [differential fuzzing](differential-fuzzing.md), `--sanitize` compiles the generated code,
+the asn1c runtime and the adapter with AddressSanitizer and UndefinedBehaviorSanitizer, and with
+`-fno-sanitize-recover=all`, so any report stops the adapter:
+
+```sh
+python3 scripts/setup_asn1c.py --sanitize
+```
+
+It uses the same cache entry, since only the adapter is compiled differently, and runs the same
+audit. Its runs default to `build/asn1c-sanitized-runs`, so the corpus runners, which take the
+newest receipt from `build/asn1c-runs`, keep the plain adapter. The receipt records
+`"sanitizers": ["address", "undefined"]` and the flags.
+
+UBSan's `nonnull-attribute` check is off. asn1c 0.9.29's `dynamic_encoder_cb()` in
+`asn_application.c` passes a null pointer to `memcpy()` with a length of zero whenever it
+re-encodes an empty string read in constructed form, such as `24 80 04 00 00 00`. That is undefined
+behavior, but it accesses no memory, so it is not a vulnerability and is not reported upstream.
+Fuzzing found it ([#23](https://github.com/OpenTLV/opentlv-testlab/issues/23)).
+
 ## Schema and generated code
 
 [`differential/asn1c/TestLabReference-1.asn1`](../differential/asn1c/TestLabReference-1.asn1)
@@ -200,7 +221,7 @@ complete value, and a decoded value must pass asn1c's constraint check.
 | `bit_string` | `unused_bits` and `value` in hex, as asn1c stores them |
 | `octet_string`, `ia5string` | `value` in hex |
 | `null` | none |
-| `object_identifier` | `value`: dotted arcs, or `null` if an arc exceeds 32 bits |
+| `object_identifier` | `value`: dotted arcs, or `null` for malformed arcs; an arc above 2^32-1 is reduced modulo 2^32 (`ber-oid-arc-above-32-bits`) |
 | `sequence`, `set` | `fields`: present components in definition order, `{"name", "value"}` |
 | `sequence_of`, `set_of` | `items`: values in decoded order |
 | `choice` | `alternative` and `value` |
@@ -220,7 +241,7 @@ adapter checks the encoded size instead.
 
 ## Capability audit
 
-[`differential/asn1c/capabilities.json`](../differential/asn1c/capabilities.json) holds 77 probes: 50 supported, 5 unsupported and 22 not comparable.
+[`differential/asn1c/capabilities.json`](../differential/asn1c/capabilities.json) holds 80 probes: 50 supported, 6 unsupported and 24 not comparable.
 Each probe names its area, classification, the X.690 or X.680 rule it checks, the request and
 the exact expected result, without `syntax` and `detail`. Expectations were written from the
 rules, then confirmed against the pinned build; classification depends on the rule, not on
@@ -275,8 +296,13 @@ page, not only editing the expectation.
 | `ber-constructed-segment-own-tag` | not comparable | Accepts segments of a constructed IA5String tagged IA5String |
 | `ber-constructed-ia5-octet-segments`, `ber-constructed-implicit-octet-segments` | unsupported | Rejects the OCTET STRING segments that X.690 8.23.5 and 8.7.3.2 prescribe for a character string or an implicitly tagged string, because it requires each segment to repeat the type's own tag |
 | `ber-explicit-indefinite-primitive` | unsupported | Rejects an indefinite length on an explicit tag around INTEGER; the definite form decodes |
+| `ber-oid-arc-above-32-bits` | not comparable | Reduces an arc above 2^32-1 modulo 2^32 without an error: `1.2.4294967296` reads as `1.2.0`, while the DER encoder emits the original octets |
+| `ber-bit-string-segment-no-initial-octet` | not comparable | Accepts and ignores a BIT STRING segment without its initial octet |
+| `ber-bit-string-constructed-empty` | unsupported | Rejects a constructed BIT STRING with no segments, the empty bit string, in its constraint check |
 
-The [BER and CER differential](ber-cer-differential.md#bugs) found the last six; the others were
+The [BER and CER differential](ber-cer-differential.md#bugs) found the six probes from
+`ber-oid-incomplete-subidentifier` to `ber-explicit-indefinite-primitive`, and
+[differential fuzzing](differential-fuzzing.md#results) found the last three. The others were
 characterized for the DER differential.
 
 ### DER decoding
@@ -319,10 +345,10 @@ reference and declares these limitations for every CER fixture.
 
 Public CI runs only the committed, reviewed probes, with input limited to 4096 bytes, a
 60-second adapter timeout and asn1c's default 30000-byte stack bound. Exploratory or fuzzed
-inputs ([#23](https://github.com/OpenTLV/opentlv-testlab/issues/23)) stay local and private until
-triage. A suspected vulnerability in generated code or the asn1c runtime goes to upstream's
-private reporting channel in its `SECURITY.md`, never to a public issue, CI artifact or fixture.
-A crash or timeout is a run failure, not a probe result.
+inputs stay local and private until triage, as the [disclosure policy](differential-fuzzing.md#disclosure-policy)
+of the fuzzer requires. A suspected vulnerability in generated code or the asn1c runtime goes to
+upstream's private reporting channel in its `SECURITY.md`, never to a public issue, CI artifact or
+fixture. A crash or timeout is a run failure, not a probe result.
 
 ## Fast CI
 

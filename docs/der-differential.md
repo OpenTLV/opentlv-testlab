@@ -236,8 +236,8 @@ in a JSON report from either runner and requires the same result.
 
 ## Security and triage
 
-Public CI runs only the committed, reviewed corpus. Exploratory or fuzzed inputs
-([#23](https://github.com/OpenTLV/opentlv-testlab/issues/23)) stay local until triage. A suspected
+Public CI runs only the committed, reviewed corpus. Inputs from [differential fuzzing](differential-fuzzing.md)
+stay local until triage, under its [disclosure policy](differential-fuzzing.md#disclosure-policy). A suspected
 vulnerability in OpenTLV goes to its private security reporting, and one in asn1c to upstream's
 private channel in its `SECURITY.md`, never to a public issue, CI artifact or fixture. A crash or
 timeout is a run failure, not a result.
@@ -253,7 +253,8 @@ uploads the reports as the `der-differential-reports` artifact, even after a fai
 ## Limits
 
 - Only the 21 types of `TestLabReference-1` are covered, in the typed-value forms both adapters
-  share. OBJECT IDENTIFIER arcs above 2^32-1 are excluded, because asn1c reports them as `null`.
+  share. OBJECT IDENTIFIER arcs above 2^32-1 are excluded, because asn1c reduces them modulo 2^32
+  (capability probe `ber-oid-arc-above-32-bits`).
 - The verdict is X.690 DER for these types and values, not a complete DER conformance claim for
   either library. Constraints beyond the schema, REAL, time and other string types are not covered.
 - OpenTLV is exercised through its Lua binding only; Core's `der_schema.h` and other bindings are

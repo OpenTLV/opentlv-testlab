@@ -39,6 +39,14 @@ ASN1C_FLAGS = ("-fwide-types", "-fcompound-names", "-fincludes-quoted",
 MODULE_CFLAGS = ["-DASN_DISABLE_OER_SUPPORT", "-DASN_DISABLE_PER_SUPPORT"]
 CFLAGS = ["-std=gnu99", "-O2"]
 ADAPTER_WARNINGS = ["-Wall", "-Wextra", "-Werror"]
+# --sanitize: the generated code, asn1c's runtime and the adapter, for the fuzzer. A sanitizer
+# report stops the adapter, so it can never pass as a result. The nonnull-attribute check is off:
+# asn1c 0.9.29's dynamic_encoder_cb() (asn_application.c) copies zero octets from a null pointer
+# whenever it re-encodes an empty string read in constructed form, which touches no memory.
+SANITIZERS = ["address", "undefined"]
+SANITIZER_FLAGS = ["-fsanitize=address,undefined", "-fno-sanitize=nonnull-attribute", "-fno-sanitize-recover=all",
+                   "-fno-omit-frame-pointer", "-g"]
+SANITIZED_RUNS = ROOT / "build/asn1c-sanitized-runs"
 REQUIRED_FILES = {"bin/asn1c", "share/asn1c/asn_application.c", "share/asn1c/ber_decoder.c",
                   "share/asn1c/der_encoder.c"}
 # Inherited settings that would change what is built or how.
@@ -233,16 +241,17 @@ def module_sources(generated, schema, pin):
     return sources
 
 
-def compile_adapter(run_directory, cc, sources, schema, pin, log):
+def compile_adapter(run_directory, cc, sources, schema, pin, log, sanitize=False):
     build_directory = run_directory / "build"
     (build_directory / "obj").mkdir(parents=True)
     (build_directory / "testlab_types.h").write_text("".join(f"TESTLAB_TYPE({name})\n" for name in schema["types"]),
                                                     encoding="utf-8")
     defines = [f'-DTESTLAB_ASN1C_VERSION="{pin["version"]}"', f'-DTESTLAB_SCHEMA="{schema["module"]}"',
                f'-DTESTLAB_SCHEMA_SHA256="{schema["sha256"]}"']
-    commands = [[cc, *CFLAGS, *MODULE_CFLAGS, "-Igenerated", "-c", name,
+    cflags = CFLAGS + (SANITIZER_FLAGS if sanitize else [])
+    commands = [[cc, *cflags, *MODULE_CFLAGS, "-Igenerated", "-c", name,
                  "-o", f"build/obj/{PurePosixPath(name).stem}.o"] for name in sources]
-    commands.append([cc, *CFLAGS, *ADAPTER_WARNINGS, *MODULE_CFLAGS, *defines, "-Igenerated", "-Ibuild",
+    commands.append([cc, *cflags, *ADAPTER_WARNINGS, *MODULE_CFLAGS, *defines, "-Igenerated", "-Ibuild",
                      "-c", ADAPTER_SOURCE, "-o", "build/obj/testlab-adapter.o"])
     env = build_env()
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 1) as pool:
@@ -251,10 +260,14 @@ def compile_adapter(run_directory, cc, sources, schema, pin, log):
         for command, output in zip(commands, outputs):
             stream.write("+ " + subprocess.list2cmdline([str(p) for p in command]) + "\n" + output + "\n")
     objects = sorted(f"build/obj/{p.name}" for p in (build_directory / "obj").glob("*.o"))
-    run([cc, "-o", "asn1c-adapter", *objects], cwd=run_directory, env=env, log=log)
+    run([cc, *(SANITIZER_FLAGS if sanitize else []), "-o", "asn1c-adapter", *objects], cwd=run_directory, env=env,
+        log=log)
     adapter = run_directory / "asn1c-adapter"
-    return {"path": str(adapter), "sha256": digest(adapter), "source_sha256": digest(ADAPTER_SOURCE),
-            "cflags": CFLAGS, "module_cflags": MODULE_CFLAGS, "adapter_flags": ADAPTER_WARNINGS + defines}
+    built = {"path": str(adapter), "sha256": digest(adapter), "source_sha256": digest(ADAPTER_SOURCE),
+             "cflags": cflags, "module_cflags": MODULE_CFLAGS, "adapter_flags": ADAPTER_WARNINGS + defines}
+    if sanitize:
+        built["sanitizers"] = SANITIZERS
+    return built
 
 
 def validate_value(value):
@@ -428,10 +441,15 @@ def main():
     parser.add_argument("--cc", default="cc")
     parser.add_argument("--make", default="make")
     parser.add_argument("--cache-dir", type=Path, default=ROOT / "build/dependency-cache")
-    parser.add_argument("--runs-dir", type=Path, default=ROOT / "build/asn1c-runs")
+    parser.add_argument("--runs-dir", type=Path,
+                        help="Default build/asn1c-runs, or build/asn1c-sanitized-runs with --sanitize")
     parser.add_argument("--offline", action="store_true", help="Require a cached asn1c build; download nothing")
+    parser.add_argument("--sanitize", action="store_true",
+                        help="Build the adapter with AddressSanitizer and UndefinedBehaviorSanitizer, for fuzzing")
     parser.add_argument("--print-cache-key", action="store_true")
     args = parser.parse_args()
+    # Sanitized receipts stay apart, so the corpus runners keep using the plain adapter by default.
+    args.runs_dir = args.runs_dir or (SANITIZED_RUNS if args.sanitize else ROOT / "build/asn1c-runs")
     directory = None
     report = None
     try:
@@ -459,7 +477,8 @@ def main():
                                 "deterministic": True,
                                 "files": generate_twice(external["compiler"], external["skeletons"], directory, log)}
         sources = module_sources(directory / "generated", schema, pin)
-        report["adapter"] = compile_adapter(directory, cc, sources, schema, pin, directory / "build.log")
+        report["adapter"] = compile_adapter(directory, cc, sources, schema, pin, directory / "build.log",
+                                            sanitize=args.sanitize)
         write_json(directory / "provenance.json", report)
         probes = load_capabilities()["probes"]
         results = audit(report["adapter"]["path"], probes, pin, schema, directory / "capabilities.log")
