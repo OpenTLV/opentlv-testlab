@@ -1,0 +1,297 @@
+{
+  "schema": 1,
+  "contract": "rust-ber-der-1",
+  "basis": "Source/API review and external-only capability probes; no Core or Rust binding execution results. Supported denotes availability for the specified subset, not conformance.",
+  "core_baseline": {
+    "version": "0.8.0",
+    "commit": "345c77acb29266036df5f27d04ce315bb61853cc",
+    "purpose": "documentation baseline only; #30 must acquire and record its actual Core participant"
+  },
+  "features": [
+    {
+      "id": "framing",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h, der.h: identifiers and definite lengths"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::canonical_integer_is_accepted_in_both_modes; high_tag_and_non_universal_classes_are_preserved"
+      },
+      "der_parser_der": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::canonical_integer_is_accepted_in_both_modes; src/der/parser.rs::der_read_element_header"
+      }
+    },
+    {
+      "id": "indefinite",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h: constructed indefinite lengths; der_validation.h rejects them for DER"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::ber_indefinite_sequence_preserves_length_and_children"
+      },
+      "der_parser_der": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::ber_indefinite_sequence_preserves_length_and_children (rejects)"
+      }
+    },
+    {
+      "id": "tree",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_validation.h: tlv_der_read/visit and BER TreeReader"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::ber_indefinite_sequence_preserves_length_and_children; src/ber/wrap_any.rs"
+      },
+      "der_parser_der": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::src/der/parser.rs: SEQUENCE/SET tree; contents validation has a separate row"
+      }
+    },
+    {
+      "id": "root-contents",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/asn1_codec.h: explicitly selected canonical value codecs, not raw framing"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::canonical_integer_is_accepted_in_both_modes (canonical subset only)"
+      },
+      "der_parser_der": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::der_checks_root_boolean_and_integer_contents (selected rules only)"
+      }
+    },
+    {
+      "id": "ber-noncanonical-contents",
+      "core": {
+        "status": "not-comparable",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/asn1_codec.h: canonical BOOLEAN/BIT STRING codecs are stricter than BER"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::der_checks_root_boolean_and_integer_contents (BER TRUE 01 accepted)"
+      },
+      "der_parser_der": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::DER rules intentionally differ from BER contents rules"
+      }
+    },
+    {
+      "id": "nested-der-contents",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_validation.h plus per-node asn1_codec.h validation"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::BER acceptance cannot establish DER canonicality"
+      },
+      "der_parser_der": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::der_generic_recursion_does_not_validate_nested_boolean"
+      }
+    },
+    {
+      "id": "opaque-constructed",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/BER/DER traversal can expose children of all constructed classes"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "unsupported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::non_universal_constructed_contents_are_opaque; explicit adapter recursion required"
+      },
+      "der_parser_der": {
+        "status": "unsupported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::non_universal_constructed_contents_are_opaque; explicit adapter recursion required"
+      }
+    },
+    {
+      "id": "constructed-strings",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h: framing; reassembly is separate from raw values"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::constructed_octet_strings_are_not_reassembled_by_ber"
+      },
+      "der_parser_der": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::src/der/parser.rs does not establish all string canonical rules; no blanket DER guarantee"
+      }
+    },
+    {
+      "id": "schema",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_schema.h: SET/SET OF order and DEFAULT omission require a schema"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::generic parsing does not enforce this TestLab schema"
+      },
+      "der_parser_der": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::schema_order_is_not_checked_by_generic_der"
+      }
+    },
+    {
+      "id": "malformed-framing",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h and der_validation.h; raw BER deliberately accepts some non-X.690 tags"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::truncated_input_and_explicit_recursion_budget_fail; individual outcomes still require #30"
+      },
+      "der_parser_der": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::truncated_input_and_explicit_recursion_budget_fail; individual outcomes still require #30"
+      }
+    },
+    {
+      "id": "single-root",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_validation.h consumed count; empty/trailing checks belong to adapter"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::remainder_is_not_a_library_rejection"
+      },
+      "der_parser_der": {
+        "status": "supported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::remainder_is_not_a_library_rejection"
+      }
+    },
+    {
+      "id": "wide-length",
+      "core": {
+        "status": "not-tested",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h: native buffer and TLV_SIZE_MAX limits; architecture dependent"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "not-tested",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::asn1-rs length parsing uses usize; needs target-specific audit in #30"
+      },
+      "der_parser_der": {
+        "status": "not-tested",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::native overflow and canonical rejection must not be equated"
+      }
+    },
+    {
+      "id": "limits",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_validation.h: independent depth/input/value/element budgets"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::truncated_input_and_explicit_recursion_budget_fail; recursion budget is not Core depth"
+      },
+      "der_parser_der": {
+        "status": "not-comparable",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::truncated_input_and_explicit_recursion_budget_fail; no matching input/element budgets"
+      }
+    },
+    {
+      "id": "encoding",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h and der_validation.h writing APIs"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "unsupported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::serialize feature disabled in this baseline"
+      },
+      "der_parser_der": {
+        "status": "unsupported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::serialize feature disabled in this baseline"
+      }
+    },
+    {
+      "id": "cer",
+      "core": {
+        "status": "supported",
+        "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/cer.h and cer_validation.h"
+      },
+      "rust_binding": {
+        "status": "not-tested",
+        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+      },
+      "der_parser_ber": {
+        "status": "unsupported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::no CER validation API selected"
+      },
+      "der_parser_der": {
+        "status": "unsupported",
+        "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::no CER validation API selected"
+      }
+    }
+  ]
+}

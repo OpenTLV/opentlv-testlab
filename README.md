@@ -23,6 +23,7 @@ binding repository.
 | [DER differential](docs/der-differential.md) | OpenTLV DER decoding and encoding against asn1c and X.690: checks, corpus, limitations and results |
 | [BER and CER differential](docs/ber-cer-differential.md) | OpenTLV BER and CER interoperability with asn1c, judged against an independent X.690 reference |
 | [Differential fuzzing](docs/differential-fuzzing.md) | Local, exploratory BER, DER and CER fuzzing against asn1c and X.690: strategies, feature intersection, findings, triage and disclosure policy |
+| [Rust reference baseline](docs/rust-reference.md) | Exact der-parser pin, dependency provenance, BER/DER capability intersection, reviewed fixtures and normalized observation contract |
 
 ## Reproduce a comparison locally
 
@@ -109,6 +110,7 @@ runtime or timeout fails the command.
 | `python3 scripts/x690.py TYPE HEX` | Decode bytes with the independent X.690 reference that BER and CER fixtures must match; `--encoding der` or `cer` applies a canonical encoding |
 | `python3 scripts/setup_asn1c.py --sanitize` | Build the asn1c adapter with AddressSanitizer and UndefinedBehaviorSanitizer for fuzzing |
 | `python3 scripts/run_fuzz.py` | Fuzz OpenTLV BER, DER and CER against asn1c locally; see the [fuzzing guide](docs/differential-fuzzing.md) |
+| `python3 scripts/check_rust_reference.py` | Validate the Rust dependency and fixture contracts; add `--verify-cache` to verify offline Cargo archives and sources |
 
 ## Supported BER subset
 
