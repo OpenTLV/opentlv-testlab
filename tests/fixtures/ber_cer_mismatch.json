@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "fixtures": [
+    {
+      "id": "ber-boolean-true-01-undeclared",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "Deliberate mismatch: the canonical BOOLEAN rule of the OpenTLV codec is not declared",
+      "rule": "X.690 8.2.2: any nonzero octet is TRUE in BER",
+      "type": "Flag",
+      "wire": "01 01 01",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "boolean",
+          "value": true
+        }
+      },
+      "origin": "asn1-ber:boolean-noncanonical"
+    }
+  ]
+}

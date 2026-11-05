@@ -7,8 +7,8 @@ TestLab can build [`vlm/asn1c`](https://github.com/vlm/asn1c), generate C code f
 small TestLab ASN.1 schema and query it through one adapter process. The adapter is an
 independent C reference for comparisons with OpenTLV: the
 [DER differential](der-differential.md) ([#21](https://github.com/OpenTLV/opentlv-testlab/issues/21))
-uses it, and BER and CER interoperability
-([#22](https://github.com/OpenTLV/opentlv-testlab/issues/22)) will. This page records which asn1c
+and the [BER and CER differential](ber-cer-differential.md)
+([#22](https://github.com/OpenTLV/opentlv-testlab/issues/22)) use it. This page records which asn1c
 was selected, how it is built, what the adapter returns and what asn1c can and cannot decide.
 
 asn1c is a TestLab test tool. It is not a runtime, build or test dependency of OpenTLV Core
@@ -220,7 +220,7 @@ adapter checks the encoded size instead.
 
 ## Capability audit
 
-[`differential/asn1c/capabilities.json`](../differential/asn1c/capabilities.json) holds 71 probes: 50 supported, 2 unsupported and 19 not comparable.
+[`differential/asn1c/capabilities.json`](../differential/asn1c/capabilities.json) holds 77 probes: 50 supported, 5 unsupported and 22 not comparable.
 Each probe names its area, classification, the X.690 or X.680 rule it checks, the request and
 the exact expected result, without `syntax` and `detail`. Expectations were written from the
 rules, then confirmed against the pinned build; classification depends on the rule, not on
@@ -229,7 +229,7 @@ whether asn1c happened to match.
 | Classification | Meaning for later comparisons |
 | --- | --- |
 | `supported` | asn1c behaves as the rule requires; it can be an oracle for this case |
-| `unsupported` | asn1c has no such operation; a reference limitation, never an OpenTLV defect |
+| `unsupported` | asn1c has no such operation or rejects a valid form; a reference limitation, never an OpenTLV defect |
 | `not-comparable` | asn1c accepts or emits what the rule forbids, so it cannot judge that rule |
 
 Setup runs the audit and fails on any difference. To rerun it on the newest passed setup without
@@ -270,6 +270,14 @@ page, not only editing the expectation.
 | `ber-primitive-indefinite` | not comparable | Reads `04 80` as a complete empty value, so the error surfaces as trailing input |
 | `ber-high-tag-leading-zero`, `ber-high-tag-form-for-low-number` | not comparable | Accepts nonminimal tag numbers |
 | `ber-oid-leading-80` | not comparable | Accepts a padded subidentifier, and re-encodes it |
+| `ber-oid-incomplete-subidentifier` | not comparable | Accepts an unterminated last subidentifier, reports no arcs and re-encodes it |
+| `ber-bit-string-segment-unused` | not comparable | Ignores the unused bits of a segment other than the last and keeps them as data |
+| `ber-constructed-segment-own-tag` | not comparable | Accepts segments of a constructed IA5String tagged IA5String |
+| `ber-constructed-ia5-octet-segments`, `ber-constructed-implicit-octet-segments` | unsupported | Rejects the OCTET STRING segments that X.690 8.23.5 and 8.7.3.2 prescribe for a character string or an implicitly tagged string, because it requires each segment to repeat the type's own tag |
+| `ber-explicit-indefinite-primitive` | unsupported | Rejects an indefinite length on an explicit tag around INTEGER; the definite form decodes |
+
+The [BER and CER differential](ber-cer-differential.md#bugs) found the last six; the others were
+characterized for the DER differential.
 
 ### DER decoding
 
@@ -303,9 +311,9 @@ values re-encode noncanonically, so their DER output is no oracle either: the em
 | `cer-encode` | unsupported | `asn_encode()` fails with `ENOENT` for CER on every type |
 | `cer-form-as-ber` | not comparable | The BER decoder accepts CER forms, but every non-CER form too |
 
-asn1c is therefore no CER reference in either direction. CER fixtures in
-[#22](https://github.com/OpenTLV/opentlv-testlab/issues/22) need another oracle or must declare
-this limitation.
+asn1c is therefore no CER reference in either direction. The
+[BER and CER differential](ber-cer-differential.md) judges CER against an independent X.690
+reference and declares these limitations for every CER fixture.
 
 ## Security and triage
 
@@ -329,15 +337,16 @@ not depend on it.
   adapter representation.
 - Typed values cannot show encoding details; see [typed values](#typed-values).
 - Only Linux and WSL with GCC were verified; the Extended suite does not run asn1c yet.
-- The probes characterize asn1c only. The [DER differential](der-differential.md) compares it
-  with OpenTLV and cites the probes that limit its verdicts.
+- The probes characterize asn1c only. The [DER differential](der-differential.md) and the
+  [BER and CER differential](ber-cer-differential.md) compare it with OpenTLV and cite the probes
+  that limit their verdicts.
 
 ## Verification
 
 Local verification on 2026-11-04 used WSL on Ubuntu 24.04 x86-64 with GCC 13.3.0 and GNU Make
 4.3, from a clean clone with these changes applied. A cold setup built asn1c 0.9.29 from the
 verified archive, generated identical sources twice, compiled the adapter with no warnings and
-passed all 71 probes. A warm setup hit the cache without downloading or building, `--offline`
+passed all 71 probes of #20; the six BER probes added for #22 passed in a new cold setup. A warm setup hit the cache without downloading or building, `--offline`
 hit it again, an empty cache with `--offline` failed with an offline cache miss, and
 `check_asn1c.py` reran selected probes on the built adapter. The Python tests in
 `tests/test_asn1c.py` cover the pin, schema, probes, cache, generation, adapter protocol and
