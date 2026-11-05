@@ -1,0 +1,2261 @@
+{
+  "schema": 1,
+  "contract": "rust-ber-der-1",
+  "reproduction": {
+    "command": "python3 scripts/check_rust_reference.py",
+    "packages": {
+      "der-parser": "10.0.0"
+    },
+    "status": "fixture validation only; no differential runner in #29"
+  },
+  "limits": {
+    "max_input_bytes": 4096,
+    "max_depth": 16,
+    "max_elements": 256,
+    "timeout_seconds": 5,
+    "process_memory_mib": 256
+  },
+  "fixtures": [
+    {
+      "id": "ber-integer-negative-one",
+      "encoding": "ber",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "INTEGER -1",
+      "rule": "X.690 8.3.3: two's complement",
+      "type": "Number",
+      "wire": "02 01 ff",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "-1"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "2",
+          "constructed": false,
+          "identifier_hex": "02",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "ff",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-integer-negative-one",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-integer-2-pow-53",
+      "encoding": "ber",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "INTEGER 2^53, beyond exact Lua 5.2 numbers in lua-asn1",
+      "rule": "X.690 8.3.3",
+      "type": "Number",
+      "wire": "02 07 20 00 00 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "9007199254740992"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "2",
+          "constructed": false,
+          "identifier_hex": "02",
+          "length": {
+            "form": "short",
+            "value": "7",
+            "encoded_hex": "07"
+          },
+          "value_hex": "20000000000000",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-integer-2-pow-53",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-integer-above-int64",
+      "encoding": "ber",
+      "category": "primitive",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Compare raw INTEGER contents; the typed reference value is oracle context only because the Core codec represents int64.",
+      "description": "INTEGER 2^63 needs nine octets",
+      "rule": "X.690 8.3.2, 8.3.3",
+      "type": "Number",
+      "wire": "02 09 00 80 00 00 00 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "9223372036854775808"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "2",
+          "constructed": false,
+          "identifier_hex": "02",
+          "length": {
+            "form": "short",
+            "value": "9",
+            "encoded_hex": "09"
+          },
+          "value_hex": "008000000000000000",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-integer-above-int64",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-null",
+      "encoding": "ber",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "NULL",
+      "rule": "X.690 8.8.2: no contents octets",
+      "type": "Nothing",
+      "wire": "05 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "null"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "5",
+          "constructed": false,
+          "identifier_hex": "05",
+          "length": {
+            "form": "short",
+            "value": "0",
+            "encoded_hex": "00"
+          },
+          "value_hex": "",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-null",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-oid",
+      "encoding": "ber",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "OBJECT IDENTIFIER 1.2.3.4",
+      "rule": "X.690 8.19.4: first subidentifier joins two arcs",
+      "type": "Identifier",
+      "wire": "06 03 2a 03 04",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "object_identifier",
+          "value": "1.2.3.4"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "6",
+          "constructed": false,
+          "identifier_hex": "06",
+          "length": {
+            "form": "short",
+            "value": "3",
+            "encoded_hex": "03"
+          },
+          "value_hex": "2a0304",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-oid",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-bit-string-empty",
+      "encoding": "ber",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Empty BIT STRING",
+      "rule": "X.690 8.6.2.3: initial octet 0 and no bits",
+      "type": "Bits",
+      "wire": "03 01 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 0,
+          "value": ""
+        },
+        "tree": {
+          "class": "universal",
+          "number": "3",
+          "constructed": false,
+          "identifier_hex": "03",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "00",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-bit-string-empty",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-implicit-tag-30",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Context tag 30, the last low tag number",
+      "rule": "X.690 8.1.2.2",
+      "type": "Implicit30",
+      "wire": "9e 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        },
+        "tree": {
+          "class": "context",
+          "number": "30",
+          "constructed": false,
+          "identifier_hex": "9e",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "41",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-implicit-tag-30",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-high-tag-31",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Tag 31 in high-tag-number form",
+      "rule": "X.690 8.1.2.4",
+      "type": "HighTag31",
+      "wire": "9f 1f 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        },
+        "tree": {
+          "class": "context",
+          "number": "31",
+          "constructed": false,
+          "identifier_hex": "9f1f",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "41",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-high-tag-31",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-high-tag-200",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Tag 200 with two subsequent identifier octets",
+      "rule": "X.690 8.1.2.4",
+      "type": "HighTag200",
+      "wire": "9f 81 48 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        },
+        "tree": {
+          "class": "context",
+          "number": "200",
+          "constructed": false,
+          "identifier_hex": "9f8148",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "41",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-high-tag-200",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-application-class",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "APPLICATION 1 INTEGER",
+      "rule": "X.690 8.1.2.2: class bits 01",
+      "type": "Application1",
+      "wire": "41 01 05",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "5"
+        },
+        "tree": {
+          "class": "application",
+          "number": "1",
+          "constructed": false,
+          "identifier_hex": "41",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "05",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-application-class",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-private-class-indefinite",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "feature": "opaque-constructed",
+      "classification": "unsupported",
+      "reason": "Generic der-parser returns opaque non-universal contents; complete child traversal needs the explicit adapter in #30.",
+      "description": "PRIVATE 2 OCTET STRING in constructed indefinite form",
+      "rule": "X.690 8.1.2.2, 8.7.3, 8.1.3.6",
+      "type": "Private2",
+      "wire": "e2 80 04 01 41 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        },
+        "tree": {
+          "class": "private",
+          "number": "2",
+          "constructed": true,
+          "identifier_hex": "e2",
+          "length": {
+            "form": "indefinite",
+            "value": null,
+            "encoded_hex": "80"
+          },
+          "value_hex": "040141",
+          "children": [
+            {
+              "class": "universal",
+              "number": "4",
+              "constructed": false,
+              "identifier_hex": "04",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "41",
+              "children": []
+            }
+          ]
+        }
+      },
+      "origin": "ber-cer-interop:ber-private-class-indefinite",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-high-tag-leading-80",
+      "encoding": "ber",
+      "category": "malformed",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Tag number with a leading zero septet",
+      "rule": "X.690 8.1.2.4.2 c: the first subsequent octet is not 80",
+      "type": "HighTag31",
+      "wire": "9f 80 1f 01 aa",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "ber-cer-interop:ber-high-tag-leading-80",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-high-tag-unterminated",
+      "encoding": "ber",
+      "category": "truncated",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "High tag number without its last octet",
+      "rule": "X.690 8.1.2.4.2: bit 8 is one on all but the last octet",
+      "type": "HighTag200",
+      "wire": "9f 81",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "ber-cer-interop:ber-high-tag-unterminated",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-length-128",
+      "encoding": "ber",
+      "category": "length-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Length 128, the first long form",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 81 80 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": false,
+          "identifier_hex": "04",
+          "length": {
+            "form": "long",
+            "value": "128",
+            "encoded_hex": "8180"
+          },
+          "value_hex": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-length-128",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-length-256",
+      "encoding": "ber",
+      "category": "length-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Length 256 in two length octets",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 82 01 00 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": false,
+          "identifier_hex": "04",
+          "length": {
+            "form": "long",
+            "value": "256",
+            "encoded_hex": "820100"
+          },
+          "value_hex": "41414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-length-256",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-length-long-form-for-1",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Long form for length 1",
+      "rule": "X.690 8.1.3.2 b: the sender may use the long form for any length",
+      "type": "Octets",
+      "wire": "04 81 01 aa",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "aa"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": false,
+          "identifier_hex": "04",
+          "length": {
+            "form": "long",
+            "value": "1",
+            "encoded_hex": "8101"
+          },
+          "value_hex": "aa",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-length-long-form-for-1",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-length-leading-zero",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Long-form length with a leading zero octet",
+      "rule": "X.690 8.1.3.5: no rule limits BER to the fewest length octets",
+      "type": "Octets",
+      "wire": "04 82 00 03 41 42 43",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "414243"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": false,
+          "identifier_hex": "04",
+          "length": {
+            "form": "long",
+            "value": "3",
+            "encoded_hex": "820003"
+          },
+          "value_hex": "414243",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-length-leading-zero",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-length-nine-octets",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "feature": "wide-length",
+      "classification": "inconclusive",
+      "reason": "Legal BER length representation outside the initial audited native-width intersection; no overflow equivalence assumed.",
+      "description": "Length 3 in nine length octets",
+      "rule": "X.690 8.1.3.5: up to 126 subsequent length octets",
+      "type": "Octets",
+      "wire": "04 89 00 00 00 00 00 00 00 00 03 41 42 43",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "414243"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": false,
+          "identifier_hex": "04",
+          "length": {
+            "form": "long",
+            "value": "3",
+            "encoded_hex": "89000000000000000003"
+          },
+          "value_hex": "414243",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-length-nine-octets",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-length-reserved",
+      "encoding": "ber",
+      "category": "malformed",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Reserved length octet ff",
+      "rule": "X.690 8.1.3.5 c",
+      "type": "Octets",
+      "wire": "04 ff",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "ber-cer-interop:ber-length-reserved",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-length-past-input",
+      "encoding": "ber",
+      "category": "truncated",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Length far beyond the input",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 84 ff ff ff ff 41",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "ber-cer-interop:ber-length-past-input",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-indefinite-sequence",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "feature": "indefinite",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "SEQUENCE with an indefinite length",
+      "rule": "X.690 8.1.3.6: indefinite form for a constructed encoding",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        },
+        "tree": {
+          "class": "universal",
+          "number": "16",
+          "constructed": true,
+          "identifier_hex": "30",
+          "length": {
+            "form": "indefinite",
+            "value": null,
+            "encoded_hex": "80"
+          },
+          "value_hex": "0101ff020105",
+          "children": [
+            {
+              "class": "universal",
+              "number": "1",
+              "constructed": false,
+              "identifier_hex": "01",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "ff",
+              "children": []
+            },
+            {
+              "class": "universal",
+              "number": "2",
+              "constructed": false,
+              "identifier_hex": "02",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "05",
+              "children": []
+            }
+          ]
+        }
+      },
+      "origin": "ber-cer-interop:ber-indefinite-sequence",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-indefinite-empty",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "feature": "indefinite",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Empty SEQUENCE OF with an indefinite length",
+      "rule": "X.690 8.1.3.6, 8.1.5",
+      "type": "NumberList",
+      "wire": "30 80 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence_of",
+          "items": []
+        },
+        "tree": {
+          "class": "universal",
+          "number": "16",
+          "constructed": true,
+          "identifier_hex": "30",
+          "length": {
+            "form": "indefinite",
+            "value": null,
+            "encoded_hex": "80"
+          },
+          "value_hex": "",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-indefinite-empty",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-indefinite-nested",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "feature": "indefinite",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Three levels of indefinite lengths",
+      "rule": "X.690 8.1.3.6, 8.1.5: each end-of-contents closes the innermost value",
+      "type": "Nested",
+      "wire": "30 80 04 01 41 30 80 30 80 01 01 ff 02 01 05 00 00 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": "41"
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "tree": {
+          "class": "universal",
+          "number": "16",
+          "constructed": true,
+          "identifier_hex": "30",
+          "length": {
+            "form": "indefinite",
+            "value": null,
+            "encoded_hex": "80"
+          },
+          "value_hex": "040141308030800101ff02010500000000",
+          "children": [
+            {
+              "class": "universal",
+              "number": "4",
+              "constructed": false,
+              "identifier_hex": "04",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "41",
+              "children": []
+            },
+            {
+              "class": "universal",
+              "number": "16",
+              "constructed": true,
+              "identifier_hex": "30",
+              "length": {
+                "form": "indefinite",
+                "value": null,
+                "encoded_hex": "80"
+              },
+              "value_hex": "30800101ff0201050000",
+              "children": [
+                {
+                  "class": "universal",
+                  "number": "16",
+                  "constructed": true,
+                  "identifier_hex": "30",
+                  "length": {
+                    "form": "indefinite",
+                    "value": null,
+                    "encoded_hex": "80"
+                  },
+                  "value_hex": "0101ff020105",
+                  "children": [
+                    {
+                      "class": "universal",
+                      "number": "1",
+                      "constructed": false,
+                      "identifier_hex": "01",
+                      "length": {
+                        "form": "short",
+                        "value": "1",
+                        "encoded_hex": "01"
+                      },
+                      "value_hex": "ff",
+                      "children": []
+                    },
+                    {
+                      "class": "universal",
+                      "number": "2",
+                      "constructed": false,
+                      "identifier_hex": "02",
+                      "length": {
+                        "form": "short",
+                        "value": "1",
+                        "encoded_hex": "01"
+                      },
+                      "value_hex": "05",
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "origin": "ber-cer-interop:ber-indefinite-nested",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-indefinite-inside-definite",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "feature": "indefinite",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Indefinite SEQUENCE OF inside a definite SEQUENCE",
+      "rule": "X.690 8.1.3.2, 8.1.3.6: each constructed encoding chooses its own form",
+      "type": "Nested",
+      "wire": "30 0f 04 01 41 30 80 30 06 01 01 ff 02 01 05 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": "41"
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "tree": {
+          "class": "universal",
+          "number": "16",
+          "constructed": true,
+          "identifier_hex": "30",
+          "length": {
+            "form": "short",
+            "value": "15",
+            "encoded_hex": "0f"
+          },
+          "value_hex": "040141308030060101ff0201050000",
+          "children": [
+            {
+              "class": "universal",
+              "number": "4",
+              "constructed": false,
+              "identifier_hex": "04",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "41",
+              "children": []
+            },
+            {
+              "class": "universal",
+              "number": "16",
+              "constructed": true,
+              "identifier_hex": "30",
+              "length": {
+                "form": "indefinite",
+                "value": null,
+                "encoded_hex": "80"
+              },
+              "value_hex": "30060101ff020105",
+              "children": [
+                {
+                  "class": "universal",
+                  "number": "16",
+                  "constructed": true,
+                  "identifier_hex": "30",
+                  "length": {
+                    "form": "short",
+                    "value": "6",
+                    "encoded_hex": "06"
+                  },
+                  "value_hex": "0101ff020105",
+                  "children": [
+                    {
+                      "class": "universal",
+                      "number": "1",
+                      "constructed": false,
+                      "identifier_hex": "01",
+                      "length": {
+                        "form": "short",
+                        "value": "1",
+                        "encoded_hex": "01"
+                      },
+                      "value_hex": "ff",
+                      "children": []
+                    },
+                    {
+                      "class": "universal",
+                      "number": "2",
+                      "constructed": false,
+                      "identifier_hex": "02",
+                      "length": {
+                        "form": "short",
+                        "value": "1",
+                        "encoded_hex": "01"
+                      },
+                      "value_hex": "05",
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "origin": "ber-cer-interop:ber-indefinite-inside-definite",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-indefinite-primitive",
+      "encoding": "ber",
+      "category": "malformed",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Indefinite length on a primitive OCTET STRING",
+      "rule": "X.690 8.1.3.2 a: a primitive encoding uses the definite form",
+      "type": "Octets",
+      "wire": "04 80 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "ber-cer-interop:ber-indefinite-primitive",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-indefinite-missing-eoc",
+      "encoding": "ber",
+      "category": "truncated",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Complete components without the end-of-contents",
+      "rule": "X.690 8.1.3.6.1",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "ber-cer-interop:ber-indefinite-missing-eoc",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-indefinite-half-eoc",
+      "encoding": "ber",
+      "category": "truncated",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Only the first end-of-contents octet",
+      "rule": "X.690 8.1.5: end-of-contents is two zero octets",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 00",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "ber-cer-interop:ber-indefinite-half-eoc",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-eoc-root",
+      "encoding": "ber",
+      "category": "end-of-contents",
+      "feature": "malformed-framing",
+      "classification": "inconclusive",
+      "reason": "Reference exposes EOC objects; root/context validity needs explicit adapter checks, attributed to adapter rather than library.",
+      "description": "End-of-contents as the whole input",
+      "rule": "X.690 8.1.5: only an indefinite-length value ends with end-of-contents",
+      "type": "Octets",
+      "wire": "00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "ber-cer-interop:ber-eoc-root",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-eoc-in-definite",
+      "encoding": "ber",
+      "category": "end-of-contents",
+      "feature": "malformed-framing",
+      "classification": "inconclusive",
+      "reason": "Reference exposes EOC objects; root/context validity needs explicit adapter checks, attributed to adapter rather than library.",
+      "description": "End-of-contents inside a definite SEQUENCE OF",
+      "rule": "X.690 8.1.5",
+      "type": "NumberList",
+      "wire": "30 02 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "ber-cer-interop:ber-eoc-in-definite",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-constructed-octets",
+      "encoding": "ber",
+      "category": "segmented",
+      "feature": "constructed-strings",
+      "classification": "inconclusive",
+      "reason": "Generic reference does not expose the same segmented value/tree contract; acceptance is not string reassembly.",
+      "description": "Constructed OCTET STRING with one segment",
+      "rule": "X.690 8.7.3: the sender may use the constructed form",
+      "type": "Octets",
+      "wire": "24 03 04 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": true,
+          "identifier_hex": "24",
+          "length": {
+            "form": "short",
+            "value": "3",
+            "encoded_hex": "03"
+          },
+          "value_hex": "040141",
+          "children": [
+            {
+              "class": "universal",
+              "number": "4",
+              "constructed": false,
+              "identifier_hex": "04",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "41",
+              "children": []
+            }
+          ]
+        }
+      },
+      "origin": "ber-cer-interop:ber-constructed-octets",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-constructed-bit-string",
+      "encoding": "ber",
+      "category": "segmented",
+      "feature": "constructed-strings",
+      "classification": "inconclusive",
+      "reason": "Generic reference does not expose the same segmented value/tree contract; acceptance is not string reassembly.",
+      "description": "Constructed BIT STRING with one segment",
+      "rule": "X.690 8.6.4",
+      "type": "Bits",
+      "wire": "23 04 03 02 00 ff",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 0,
+          "value": "ff"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "3",
+          "constructed": true,
+          "identifier_hex": "23",
+          "length": {
+            "form": "short",
+            "value": "4",
+            "encoded_hex": "04"
+          },
+          "value_hex": "030200ff",
+          "children": [
+            {
+              "class": "universal",
+              "number": "3",
+              "constructed": false,
+              "identifier_hex": "03",
+              "length": {
+                "form": "short",
+                "value": "2",
+                "encoded_hex": "02"
+              },
+              "value_hex": "00ff",
+              "children": []
+            }
+          ]
+        }
+      },
+      "origin": "ber-cer-interop:ber-constructed-bit-string",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-boolean-true-01",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "feature": "ber-noncanonical-contents",
+      "classification": "inconclusive",
+      "reason": "Core canonical BOOLEAN codec is stricter than BER; framing acceptance cannot decide typed BER validity.",
+      "description": "TRUE encoded as 01",
+      "rule": "X.690 8.2.2: any nonzero octet is TRUE in BER",
+      "type": "Flag",
+      "wire": "01 01 01",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "boolean",
+          "value": true
+        },
+        "tree": {
+          "class": "universal",
+          "number": "1",
+          "constructed": false,
+          "identifier_hex": "01",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "01",
+          "children": []
+        }
+      },
+      "origin": "ber-cer-interop:ber-boolean-true-01",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-child-overruns-parent",
+      "encoding": "ber",
+      "category": "malformed",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Component length beyond its definite parent",
+      "rule": "X.690 8.1.3.4: the definite length bounds the contents",
+      "type": "Pair",
+      "wire": "30 03 02 05 01",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "ber-cer-interop:ber-child-overruns-parent",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-empty-input",
+      "encoding": "ber",
+      "category": "truncated",
+      "feature": "single-root",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "No input",
+      "rule": "X.690 8.1.1: an encoding has identifier octets",
+      "type": "Octets",
+      "wire": "",
+      "expected": {
+        "result": "reject",
+        "error": "empty"
+      },
+      "origin": "ber-cer-interop:ber-empty-input",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "ber-trailing-octet",
+      "encoding": "ber",
+      "category": "truncated",
+      "feature": "single-root",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "An octet after a complete value",
+      "rule": "X.690 8.1; TestLab single-root policy: TestLab input policy: exactly one complete value",
+      "type": "Octets",
+      "wire": "04 01 41 00",
+      "expected": {
+        "result": "reject",
+        "error": "trailing"
+      },
+      "origin": "ber-cer-interop:ber-trailing-octet",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-boolean-true",
+      "encoding": "der",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Canonical BOOLEAN TRUE",
+      "rule": "X.690 11.1: TRUE is encoded as FF",
+      "type": "Flag",
+      "wire": "01 01 ff",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "boolean",
+          "value": true
+        },
+        "tree": {
+          "class": "universal",
+          "number": "1",
+          "constructed": false,
+          "identifier_hex": "01",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "ff",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:boolean-true",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-integer-128",
+      "encoding": "der",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "INTEGER 128 needs a sign octet",
+      "rule": "X.690 8.3.2: a leading zero octet keeps 128 positive",
+      "type": "Number",
+      "wire": "02 02 00 80",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "128"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "2",
+          "constructed": false,
+          "identifier_hex": "02",
+          "length": {
+            "form": "short",
+            "value": "2",
+            "encoded_hex": "02"
+          },
+          "value_hex": "0080",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:integer-128",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-integer-minus-129",
+      "encoding": "der",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "INTEGER -129 needs two octets",
+      "rule": "X.690 8.3.2: minimal two's complement",
+      "type": "Number",
+      "wire": "02 02 ff 7f",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "-129"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "2",
+          "constructed": false,
+          "identifier_hex": "02",
+          "length": {
+            "form": "short",
+            "value": "2",
+            "encoded_hex": "02"
+          },
+          "value_hex": "ff7f",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:integer-minus-129",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-integer-above-int64",
+      "encoding": "der",
+      "category": "primitive",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Compare raw INTEGER contents; the typed reference value is oracle context only because the Core codec represents int64.",
+      "description": "INTEGER 2^63, one above int64",
+      "rule": "X.690 8.3.2: minimal two's complement",
+      "type": "Number",
+      "wire": "02 09 00 80 00 00 00 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "9223372036854775808"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "2",
+          "constructed": false,
+          "identifier_hex": "02",
+          "length": {
+            "form": "short",
+            "value": "9",
+            "encoded_hex": "09"
+          },
+          "value_hex": "008000000000000000",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:integer-above-int64",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-bit-string-one-bit",
+      "encoding": "der",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "BIT STRING of one set bit",
+      "rule": "X.690 11.2.1: unused bits are zero",
+      "type": "Bits",
+      "wire": "03 02 07 80",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 7,
+          "value": "80"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "3",
+          "constructed": false,
+          "identifier_hex": "03",
+          "length": {
+            "form": "short",
+            "value": "2",
+            "encoded_hex": "02"
+          },
+          "value_hex": "0780",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:bit-string-one-bit",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-octet-string-empty",
+      "encoding": "der",
+      "category": "zero-length",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Empty OCTET STRING",
+      "rule": "X.690 10.1: zero length in short form",
+      "type": "Octets",
+      "wire": "04 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": ""
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": false,
+          "identifier_hex": "04",
+          "length": {
+            "form": "short",
+            "value": "0",
+            "encoded_hex": "00"
+          },
+          "value_hex": "",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:octet-string-empty",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-oid-short",
+      "encoding": "der",
+      "category": "primitive",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "OBJECT IDENTIFIER 1.2.3.4",
+      "rule": "X.690 8.19: minimal subidentifiers",
+      "type": "Identifier",
+      "wire": "06 03 2a 03 04",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "object_identifier",
+          "value": "1.2.3.4"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "6",
+          "constructed": false,
+          "identifier_hex": "06",
+          "length": {
+            "form": "short",
+            "value": "3",
+            "encoded_hex": "03"
+          },
+          "value_hex": "2a0304",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:oid-short",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-high-tag-31",
+      "encoding": "der",
+      "category": "tag-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Smallest high-tag number",
+      "rule": "X.690 8.1.2.4: tag 31 needs the high-tag form",
+      "type": "HighTag31",
+      "wire": "9f 1f 01 aa",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "aa"
+        },
+        "tree": {
+          "class": "context",
+          "number": "31",
+          "constructed": false,
+          "identifier_hex": "9f1f",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "aa",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:high-tag-31",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-private-class",
+      "encoding": "der",
+      "category": "tag-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Primitive PRIVATE tag: compare raw contents, without inferring an implicit ASN.1 type.",
+      "description": "Implicit PRIVATE 2 OCTET STRING",
+      "rule": "X.690 8.1.2.2: private class",
+      "type": "Private2",
+      "wire": "c2 01 aa",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "aa"
+        },
+        "tree": {
+          "class": "private",
+          "number": "2",
+          "constructed": false,
+          "identifier_hex": "c2",
+          "length": {
+            "form": "short",
+            "value": "1",
+            "encoded_hex": "01"
+          },
+          "value_hex": "aa",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:private-class",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-length-127",
+      "encoding": "der",
+      "category": "length-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "127 contents octets in short form",
+      "rule": "X.690 10.1: 127 is the largest short-form length",
+      "type": "Octets",
+      "wire": "04 7f 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20 21 22 23 24 25 26 27 28 29 2a 2b 2c 2d 2e 2f 30 31 32 33 34 35 36 37 38 39 3a 3b 3c 3d 3e 3f 40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50 51 52 53 54 55 56 57 58 59 5a 5b 5c 5d 5e 5f 60 61 62 63 64 65 66 67 68 69 6a 6b 6c 6d 6e 6f 70 71 72 73 74 75 76 77 78 79 7a 7b 7c 7d 7e",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": false,
+          "identifier_hex": "04",
+          "length": {
+            "form": "short",
+            "value": "127",
+            "encoded_hex": "7f"
+          },
+          "value_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:length-127",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-length-128",
+      "encoding": "der",
+      "category": "length-boundary",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Smallest long-form length",
+      "rule": "X.690 10.1: 128 needs one long-form length octet",
+      "type": "Octets",
+      "wire": "04 81 80 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20 21 22 23 24 25 26 27 28 29 2a 2b 2c 2d 2e 2f 30 31 32 33 34 35 36 37 38 39 3a 3b 3c 3d 3e 3f 40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50 51 52 53 54 55 56 57 58 59 5a 5b 5c 5d 5e 5f 60 61 62 63 64 65 66 67 68 69 6a 6b 6c 6d 6e 6f 70 71 72 73 74 75 76 77 78 79 7a 7b 7c 7d 7e 7f",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        },
+        "tree": {
+          "class": "universal",
+          "number": "4",
+          "constructed": false,
+          "identifier_hex": "04",
+          "length": {
+            "form": "long",
+            "value": "128",
+            "encoded_hex": "8180"
+          },
+          "value_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+          "children": []
+        }
+      },
+      "origin": "der-canonical:length-128",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-sequence",
+      "encoding": "der",
+      "category": "constructed",
+      "feature": "tree",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "SEQUENCE of BOOLEAN and INTEGER",
+      "rule": "X.690 8.9: SEQUENCE components in order",
+      "type": "Pair",
+      "wire": "30 06 01 01 ff 02 01 05",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        },
+        "tree": {
+          "class": "universal",
+          "number": "16",
+          "constructed": true,
+          "identifier_hex": "30",
+          "length": {
+            "form": "short",
+            "value": "6",
+            "encoded_hex": "06"
+          },
+          "value_hex": "0101ff020105",
+          "children": [
+            {
+              "class": "universal",
+              "number": "1",
+              "constructed": false,
+              "identifier_hex": "01",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "ff",
+              "children": []
+            },
+            {
+              "class": "universal",
+              "number": "2",
+              "constructed": false,
+              "identifier_hex": "02",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "05",
+              "children": []
+            }
+          ]
+        }
+      },
+      "origin": "der-canonical:sequence",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-nested",
+      "encoding": "der",
+      "category": "nested",
+      "feature": "tree",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Three levels of SEQUENCE",
+      "rule": "X.690 8.9 and 8.10: nested constructed values",
+      "type": "Nested",
+      "wire": "30 16 04 02 68 69 30 10 30 06 01 01 ff 02 01 01 30 06 01 01 00 02 01 02",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": "6869"
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "1"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": false
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "2"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "tree": {
+          "class": "universal",
+          "number": "16",
+          "constructed": true,
+          "identifier_hex": "30",
+          "length": {
+            "form": "short",
+            "value": "22",
+            "encoded_hex": "16"
+          },
+          "value_hex": "04026869301030060101ff0201013006010100020102",
+          "children": [
+            {
+              "class": "universal",
+              "number": "4",
+              "constructed": false,
+              "identifier_hex": "04",
+              "length": {
+                "form": "short",
+                "value": "2",
+                "encoded_hex": "02"
+              },
+              "value_hex": "6869",
+              "children": []
+            },
+            {
+              "class": "universal",
+              "number": "16",
+              "constructed": true,
+              "identifier_hex": "30",
+              "length": {
+                "form": "short",
+                "value": "16",
+                "encoded_hex": "10"
+              },
+              "value_hex": "30060101ff0201013006010100020102",
+              "children": [
+                {
+                  "class": "universal",
+                  "number": "16",
+                  "constructed": true,
+                  "identifier_hex": "30",
+                  "length": {
+                    "form": "short",
+                    "value": "6",
+                    "encoded_hex": "06"
+                  },
+                  "value_hex": "0101ff020101",
+                  "children": [
+                    {
+                      "class": "universal",
+                      "number": "1",
+                      "constructed": false,
+                      "identifier_hex": "01",
+                      "length": {
+                        "form": "short",
+                        "value": "1",
+                        "encoded_hex": "01"
+                      },
+                      "value_hex": "ff",
+                      "children": []
+                    },
+                    {
+                      "class": "universal",
+                      "number": "2",
+                      "constructed": false,
+                      "identifier_hex": "02",
+                      "length": {
+                        "form": "short",
+                        "value": "1",
+                        "encoded_hex": "01"
+                      },
+                      "value_hex": "01",
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "class": "universal",
+                  "number": "16",
+                  "constructed": true,
+                  "identifier_hex": "30",
+                  "length": {
+                    "form": "short",
+                    "value": "6",
+                    "encoded_hex": "06"
+                  },
+                  "value_hex": "010100020102",
+                  "children": [
+                    {
+                      "class": "universal",
+                      "number": "1",
+                      "constructed": false,
+                      "identifier_hex": "01",
+                      "length": {
+                        "form": "short",
+                        "value": "1",
+                        "encoded_hex": "01"
+                      },
+                      "value_hex": "00",
+                      "children": []
+                    },
+                    {
+                      "class": "universal",
+                      "number": "2",
+                      "constructed": false,
+                      "identifier_hex": "02",
+                      "length": {
+                        "form": "short",
+                        "value": "1",
+                        "encoded_hex": "01"
+                      },
+                      "value_hex": "02",
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "origin": "der-canonical:nested",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-empty-input",
+      "encoding": "der",
+      "category": "truncated",
+      "feature": "single-root",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "No input octets",
+      "rule": "X.690 8.1.1: an encoding has identifier, length and contents octets",
+      "type": "Flag",
+      "wire": "",
+      "expected": {
+        "result": "reject",
+        "error": "empty"
+      },
+      "origin": "der-canonical:empty-input",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-truncated-identifier",
+      "encoding": "der",
+      "category": "truncated",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Input ends inside a high-tag identifier",
+      "rule": "X.690 8.1.2.4: the high-tag form continues",
+      "type": "HighTag31",
+      "wire": "9f",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "der-canonical:truncated-identifier",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-truncated-long-length",
+      "encoding": "der",
+      "category": "truncated",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Input ends inside a long-form length",
+      "rule": "X.690 8.1.3.5: long form announces two length octets",
+      "type": "Octets",
+      "wire": "04 82 01",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "der-canonical:truncated-long-length",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-truncated-value",
+      "encoding": "der",
+      "category": "truncated",
+      "feature": "malformed-framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Input ends before the contents",
+      "rule": "X.690 8.1.3: the length counts the contents octets",
+      "type": "Flag",
+      "wire": "01 01",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "der-canonical:truncated-value",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-trailing-element",
+      "encoding": "der",
+      "category": "truncated",
+      "feature": "single-root",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "A second element after a complete value",
+      "rule": "X.690 8.1; TestLab single-root policy: TestLab policy: the input is one complete value",
+      "type": "Nothing",
+      "wire": "05 00 05 00",
+      "expected": {
+        "result": "reject",
+        "error": "trailing"
+      },
+      "origin": "der-canonical:trailing-element",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-length-long-form-for-1",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Long-form length for one octet",
+      "rule": "X.690 10.1: the shortest length form",
+      "type": "Octets",
+      "wire": "04 81 01 aa",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:length-long-form-for-1",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-length-leading-zero",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Long-form length with a leading zero octet",
+      "rule": "X.690 10.1: the fewest length octets",
+      "type": "Octets",
+      "wire": "04 82 00 01 aa",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:length-leading-zero",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-length-indefinite",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "indefinite",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "Indefinite-length SEQUENCE OF",
+      "rule": "X.690 10.1: definite lengths only",
+      "type": "NumberList",
+      "wire": "30 80 02 01 01 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:length-indefinite",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-high-tag-form-for-30",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "framing",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "High-tag form for tag 30",
+      "rule": "X.690 8.1.2.4: tag numbers below 31 use one octet",
+      "type": "Implicit30",
+      "wire": "9f 1e 01 aa",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:high-tag-form-for-30",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-boolean-true-01",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "BOOLEAN TRUE as 01",
+      "rule": "X.690 11.1: TRUE is encoded as FF",
+      "type": "Flag",
+      "wire": "01 01 01",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:boolean-true-01",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-integer-leading-zero",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "root-contents",
+      "classification": "shared",
+      "reason": "Planned shared check; compare only framing and raw contents, plus explicitly selected root contents rules. Execution evidence belongs to #30.",
+      "description": "INTEGER 1 with a leading zero octet",
+      "rule": "X.690 8.3.2: no redundant leading 00",
+      "type": "Number",
+      "wire": "02 02 00 01",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:integer-leading-zero",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-default-encoded",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "schema",
+      "classification": "inconclusive",
+      "reason": "Generic der-parser has no TestLab schema/order/default validation; a successful parse cannot decide this X.690 rule.",
+      "description": "DEFAULT component encoded with its default value",
+      "rule": "X.690 11.5: a DEFAULT value is not encoded",
+      "type": "DefaultFlag",
+      "wire": "30 06 01 01 00 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:default-encoded",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-set-of-unsorted",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "schema",
+      "classification": "inconclusive",
+      "reason": "Generic der-parser has no TestLab schema/order/default validation; a successful parse cannot decide this X.690 rule.",
+      "description": "SET OF in descending order",
+      "rule": "X.690 11.6: SET OF in ascending encoding order",
+      "type": "NumberSet",
+      "wire": "31 06 02 01 02 02 01 01",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:set-of-unsorted",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-explicit-context",
+      "category": "tag-boundary",
+      "description": "Explicit context tag 5 around an INTEGER",
+      "rule": "X.690 8.14.2: an explicit tag is constructed",
+      "type": "Explicit5",
+      "wire": "a5 03 02 01 05",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "5"
+        },
+        "tree": {
+          "class": "context",
+          "number": "5",
+          "constructed": true,
+          "identifier_hex": "a5",
+          "length": {
+            "form": "short",
+            "value": "3",
+            "encoded_hex": "03"
+          },
+          "value_hex": "020105",
+          "children": [
+            {
+              "class": "universal",
+              "number": "2",
+              "constructed": false,
+              "identifier_hex": "02",
+              "length": {
+                "form": "short",
+                "value": "1",
+                "encoded_hex": "01"
+              },
+              "value_hex": "05",
+              "children": []
+            }
+          ]
+        }
+      },
+      "encoding": "der",
+      "feature": "opaque-constructed",
+      "classification": "unsupported",
+      "reason": "Generic der-parser returns opaque non-universal constructed contents; complete child traversal needs the explicit adapter in #30.",
+      "origin": "der-canonical:explicit-context",
+      "review": "existing-reviewed-corpus"
+    },
+    {
+      "id": "der-nested-boolean-true-01",
+      "encoding": "der",
+      "category": "noncanonical",
+      "feature": "nested-der-contents",
+      "classification": "inconclusive",
+      "reason": "Generic parse_der delegates SEQUENCE children to BER parsing; per-node strict validation is required in #30. Capability probe der_generic_recursion_does_not_validate_nested_boolean records this.",
+      "description": "Reviewed mutation: canonical sequence BOOLEAN TRUE ff changed to 01",
+      "rule": "X.690 11.1: DER BOOLEAN TRUE must be ff, including inside a SEQUENCE",
+      "type": "Pair",
+      "wire": "30 06 01 01 01 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:sequence",
+      "review": "reviewed-mutation",
+      "mutation": {
+        "offset": 4,
+        "before": 255,
+        "after": 1
+      }
+    }
+  ]
+}

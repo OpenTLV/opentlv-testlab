@@ -1,0 +1,344 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "contract",
+    "fixture",
+    "encoding",
+    "participant",
+    "api",
+    "checks",
+    "result",
+    "consumed",
+    "tree",
+    "error",
+    "reason"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "contract": {
+      "const": "rust-ber-der-1"
+    },
+    "fixture": {
+      "type": "string",
+      "pattern": "^(ber|der)-[a-z0-9-]+$"
+    },
+    "encoding": {
+      "enum": [
+        "ber",
+        "der"
+      ]
+    },
+    "participant": {
+      "enum": [
+        "core",
+        "rust-binding",
+        "der-parser"
+      ]
+    },
+    "api": {
+      "type": "string",
+      "minLength": 1
+    },
+    "checks": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "result": {
+      "enum": [
+        "accept",
+        "reject",
+        "unsupported",
+        "inconclusive"
+      ]
+    },
+    "consumed": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "tree": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/node"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/error"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TestLab Rust BER/DER normalized observation v1",
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "class",
+        "number",
+        "constructed",
+        "identifier_hex",
+        "length",
+        "value_hex",
+        "children"
+      ],
+      "properties": {
+        "class": {
+          "enum": [
+            "universal",
+            "application",
+            "context",
+            "private"
+          ]
+        },
+        "number": {
+          "type": "string",
+          "pattern": "^(?:0|[1-9][0-9]*)$"
+        },
+        "constructed": {
+          "type": "boolean"
+        },
+        "identifier_hex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})+$"
+        },
+        "length": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "form",
+            "value",
+            "encoded_hex"
+          ],
+          "properties": {
+            "form": {
+              "enum": [
+                "short",
+                "long",
+                "indefinite"
+              ]
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9][0-9]*)$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "encoded_hex": {
+              "type": "string",
+              "pattern": "^(?:[0-9a-f]{2})*$"
+            }
+          },
+          "oneOf": [
+            {
+              "properties": {
+                "form": {
+                  "const": "indefinite"
+                },
+                "value": {
+                  "type": "null"
+                },
+                "encoded_hex": {
+                  "const": "80"
+                }
+              }
+            },
+            {
+              "properties": {
+                "form": {
+                  "enum": [
+                    "short",
+                    "long"
+                  ]
+                },
+                "value": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9][0-9]*)$"
+                }
+              }
+            }
+          ]
+        },
+        "value_hex": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{2})*$"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/node"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "constructed": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "children": {
+                "maxItems": 0
+              },
+              "length": {
+                "properties": {
+                  "form": {
+                    "enum": [
+                      "short",
+                      "long"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "source",
+        "stage",
+        "native_code",
+        "offset"
+      ],
+      "properties": {
+        "category": {
+          "enum": [
+            "empty",
+            "truncated",
+            "trailing",
+            "invalid",
+            "limit",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "library",
+            "adapter",
+            "policy"
+          ]
+        },
+        "stage": {
+          "enum": [
+            "framing",
+            "contents",
+            "canonicality",
+            "schema",
+            "policy",
+            "unknown"
+          ]
+        },
+        "native_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "offset": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "result": {
+          "const": "accept"
+        },
+        "consumed": {
+          "type": "integer"
+        },
+        "tree": {
+          "$ref": "#/$defs/node"
+        },
+        "error": {
+          "type": "null"
+        },
+        "reason": {
+          "type": "null"
+        }
+      }
+    },
+    {
+      "properties": {
+        "result": {
+          "const": "reject"
+        },
+        "tree": {
+          "type": "null"
+        },
+        "error": {
+          "$ref": "#/$defs/error"
+        },
+        "reason": {
+          "type": "null"
+        }
+      }
+    },
+    {
+      "properties": {
+        "result": {
+          "enum": [
+            "unsupported",
+            "inconclusive"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tree": {
+          "type": "null"
+        },
+        "error": {
+          "type": "null"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+
+[package]
+name = "testlab-der-reference"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.78"
+publish = false
+license = "MIT"
+description = "Pinned BER/DER reference capability audit for OpenTLV TestLab"
+
+[dependencies]
+der-parser = { version = "=10.0.0", default-features = false, features = ["std"] }
+
+[workspace]
