@@ -1,13 +1,38 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Marek Cingel
 
-//! Dependency baseline for TestLab #29. The differential runner belongs to #30.
+//! Pinned reference capability observations. The executable never uses fixture expectations.
 
 #[cfg(test)]
 mod tests {
     use der_parser::ber::{parse_ber_recursive, BerObjectContent, Class, Length};
     use der_parser::der::parse_der_recursive;
     use der_parser::{parse_ber, parse_der};
+
+    #[test]
+    fn generic_parser_accepts_reviewed_nonminimal_headers() {
+        // These are divergences from the independent X.690 fixtures, not new
+        // expectations or exclusions in the shared differential denominator.
+        assert!(parse_ber(&[0x9f, 0x80, 0x1f, 1, 0xaa]).is_ok());
+        for wire in [
+            &[4, 0x81, 1, 0xaa][..],
+            &[4, 0x82, 0, 1, 0xaa],
+            &[0x9f, 0x1e, 1, 0xaa],
+        ] {
+            assert!(parse_der(wire).is_ok());
+        }
+    }
+
+    #[test]
+    fn incomplete_high_tags_use_invalid_tag_not_incomplete() {
+        use der_parser::error::BerError;
+        use der_parser::nom::Err;
+        assert_eq!(
+            parse_ber(&[0x9f, 0x81]),
+            Err(Err::Error(BerError::InvalidTag))
+        );
+        assert_eq!(parse_der(&[0x9f]), Err(Err::Error(BerError::InvalidTag)));
+    }
 
     #[test]
     fn canonical_integer_is_accepted_in_both_modes() {

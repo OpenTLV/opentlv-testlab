@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+cmake_minimum_required(VERSION 3.24)
+project(testlab_core_reference LANGUAGES C CXX)
+set(OPENTLV_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(OPENTLV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(OPENTLV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(OPENTLV_BUILD_CXX OFF CACHE BOOL "" FORCE)
+add_subdirectory("${TESTLAB_CORE_SOURCE}" core)
+add_executable(testlab-core core_adapter.c)
+target_link_libraries(testlab-core PRIVATE OpenTLV::tlv)
+set_target_properties(testlab-core PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
+if(MSVC)
+  target_compile_options(testlab-core PRIVATE /W4 /WX)
+else()
+  target_compile_options(testlab-core PRIVATE -Wall -Wextra -Werror -pedantic)
+endif()
