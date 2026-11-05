@@ -6,8 +6,9 @@
 This is the dependency and fixture contract for [#29](https://github.com/OpenTLV/opentlv-testlab/issues/29),
 part of [epic #19](https://github.com/OpenTLV/opentlv-testlab/issues/19). It provides a locked external
 dependency, an external-only capability audit, standards-based fixtures and a normalized observation
-schema. The Core comparison runner and its CI integration belong to #30; the Rust binding audit and
-three-way comparison belong to #31. No comparison result or Core defect is claimed here.
+schema. The [Core comparison runner and its CI integration](rust-differential.md) implement #30;
+the Rust binding audit and three-way comparison belong to #31. This page describes the baseline
+contract; execution results and limitations are documented in the runner guide.
 
 ## Dependency identity and provenance
 
@@ -75,9 +76,9 @@ metadata, verifies the entire resolved inventory and features, checks all 19 cac
 and compares every packaged source file and license notice with the verified archive. Missing or
 changed archives or source files fail; this command neither repairs nor downloads them.
 
-Cargo's registry cache may be reused for this external dependency. A future CI cache must use an
-exact key including OS, target, toolchain, manifest and lockfile, and revalidate on a hit. Do not
-cache an OpenTLV package under test: #30/#31 must acquire it freshly under the existing
+Cargo's registry cache may be reused for this external dependency. The runner's CI cache uses an
+exact key including OS, target, toolchain, manifest and lockfile, and revalidates on a hit. Do not
+cache an OpenTLV package under test: #30 freshly acquires Core release sources; #31 must follow the existing
 [consumer policy](dependencies.md#fresh-opentlv-package-from-luarocks), adapted to its actual source
 or registry, and record the exact Core revision, configuration and binding features. A sibling
 development checkout is not a substitute for a released consumer baseline.
@@ -94,8 +95,8 @@ The [machine-readable matrix](../differential/rust/capabilities.json) separates 
 binding, reference BER and reference DER. Its statuses are `supported`, `unsupported`,
 `not-comparable` and `not-tested`. They describe availability for a named subset, not measured
 conformance or a pass rate. Core evidence is a source/API review of v0.8.0, commit
-`345c77acb29266036df5f27d04ce315bb61853cc`, matching the existing TestLab Core baseline. #30 must
-record what it actually runs. All Rust binding rows remain `not-tested`; published 0.2.2 is the
+`345c77acb29266036df5f27d04ce315bb61853cc`, matching the existing TestLab Core baseline. The runner
+records the actual build and observations separately. All Rust binding rows remain `not-tested`; published 0.2.2 is the
 epic's intended starting point, not execution evidence or an assumed API equivalence.
 
 | Scenario | Core API requirement | Reference capability and initial decision |
@@ -114,19 +115,21 @@ epic's intended starting point, not execution evidence or an assumed API equival
 | Depth, input, element and memory limits | Distinct Core processing budgets | Reference recursion fuel has different semantics; no equivalent error or threshold assumed |
 | Encoding and CER | Core has separate APIs | Excluded from this reference baseline |
 
-The audit in [`src/lib.rs`](../differential/rust/src/lib.rs) records 10 reproducible observations.
+The audit in [`src/lib.rs`](../differential/rust/src/lib.rs) records 12 reproducible observations.
 It tests BER/DER selection, indefinite lengths, root contents checks, nested validation limitations,
 opaque children, tag classes, remainder handling, schema-order limitations, constructed-string
 representation and explicit recursion budgets. These are library observations, not standards
 expectations. The published source, especially `src/der/parser.rs` and `src/ber/wrap_any.rs`, explains
-why a successful generic DER parse cannot establish full DER canonicality. #30 must record the
-exact API and rules exercised; it must not silently label BER fallback as strict DER validation.
+why a successful generic DER parse cannot establish full DER canonicality. The runner records the
+exact API and rules exercised and does not label BER fallback as strict DER validation. Two #30
+probes additionally preserve observed acceptance of nonminimal headers and native `InvalidTag`
+errors for incomplete identifiers; these remain shared differential mismatches.
 
 ## Fixture contract
 
 [`rust-ber-der.json`](../differential/fixtures/rust-ber-der.json) uses contract `rust-ber-der-1` and
 contains **63 fixtures: 35 BER and 28 DER**, classified as **52 shared, 2 unsupported and 9 inconclusive**.
-Those are planned comparison denominators, not executed passes. Sixty-two reuse bytes, typed
+Those are declared comparison denominators, not pass counts. Sixty-two reuse bytes, typed
 expectations and stable source IDs from the existing reviewed BER/CER and DER corpora. `origin`
 names the original corpus and ID. DER IDs gain a `der-` prefix to avoid collisions.
 
@@ -151,7 +154,7 @@ do not change a `shared` case to `unsupported` just to make a run pass.
 ## Normalized observations
 
 [`observation.schema.json`](../differential/rust/observation.schema.json) defines the version-1 JSON
-observation that #30 will produce. It names the fixture, encoding, participant, exact API and
+observation produced by the runner. It names the fixture, encoding, participant, exact API and
 `checks` actually performed. `result` is `accept`, `reject`, `unsupported` or `inconclusive`.
 Infrastructure failures are outside this schema and invalidate the run.
 
@@ -200,18 +203,19 @@ contents, canonicality, schema, policy and unknown. Category meanings reuse Test
 definite parent bounds the failure. Never report a crash, timeout, missing dependency or malformed
 adapter output as an invalid BER/DER input. Those are run failures.
 
-The eventual runner uses existing outcomes: `pass` when both shared checks meet the independent
+The runner uses existing outcomes: `pass` when both shared checks meet the independent
 expectation, `mismatch` when a shared check disagrees, `unsupported` for a missing operation, and
 `inconclusive` when available evidence cannot decide the rule. The latter two require reasons and
 are excluded from pass-rate denominators. A mismatch is an observation needing triage, not a
-confirmed defect. #29 emits no coverage percentage and no differential verdict.
+confirmed defect. The #29 contract validator emits no coverage percentage or differential verdict;
+the separate runner reports scoped fixture denominators and fails on shared mismatches.
 
 ## Bounds, disclosure and validation status
 
-The corpus declares a future execution envelope of 4,096 input bytes, root depth zero with at most
+The corpus declares an execution envelope of 4,096 input bytes, root depth zero with at most
 16 constructed ancestors, 256 elements, five seconds per process request and 256 MiB process
 memory. The fixture validator checks input/tree dimensions; it does not run participant processes.
-#30 must enforce time and memory bounds in the runner and record any unsupported platform limit.
+The runner enforces time and memory bounds on Linux/WSL and Windows and rejects unsupported platforms.
 Do not compare Core depth directly with `parse_ber_recursive`/`parse_der_recursive` recursion fuel.
 Tag/length overflow and architecture-specific limits require separate policy cases, never huge
 allocations derived from an untrusted length.
@@ -223,7 +227,7 @@ vulnerabilities stay local/private. Confirmed non-security defects go to the own
 security findings go through its verified private reporting channel. Do not assume a private
 channel is enabled for this repository or upstream merely because it is mentioned here.
 
-Local verification on Windows/MSVC includes the minimum Rust 1.78.0 external audit, offline
-archive/source verification and Python contract tests. Fast's existing Python discovery includes
-these policy tests; this change adds no Rust comparison job. Hosted CI, Core execution, Rust binding
-execution, differential reports and release/publication evidence remain outside this baseline.
+The original #29 local verification on Windows/MSVC included the minimum Rust 1.78.0 external audit,
+offline archive/source verification and Python contract tests. The #30 runner adds Core execution,
+differential reports and a dedicated Fast job; see its [guide](rust-differential.md). Rust binding
+execution, hosted qualification and release/publication evidence are separate.

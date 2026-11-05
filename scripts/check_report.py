@@ -23,6 +23,11 @@ else:
 
 # Each runner's report: the packages it names, the fields a mismatch needs and the receipt options.
 RUNNERS = {
+    "run_rust_differential.py": {
+        "packages": {"core", "der-parser"},
+        "fields": ("wire", "encoding", "type", "rule", "expected", "differences", "reproduce"),
+        "receipts": lambda provenance: ["--provenance", provenance],
+    },
     "run_differential.py": {
         "packages": {"opentlv", "lua-asn1"},
         "fields": ("wire", "operation", "schema", "expected", "differences", "differing_libraries", "reproduce"),
@@ -57,7 +62,8 @@ def rerun(result, receipts):
     """Run the final step only: the same receipts stand in for the setup steps before it."""
     with tempfile.TemporaryDirectory() as directory:
         output = Path(directory) / "rerun.json"
-        command = [*shlex.split(result["reproduce"][-1]), *receipts, "--output", str(output)]
+        command = [*shlex.split(result["reproduce"][-1]), *receipts, "--output", str(output),
+                   "--report", str(Path(directory) / "rerun.md")]
         status = subprocess.run(command, cwd=ROOT, capture_output=True, text=True,
                                 timeout=2 * ADAPTER_TIMEOUT).returncode
         require(status == MISMATCH_EXIT, f"{result['id']}: reproduction exited {status}, not {MISMATCH_EXIT}")

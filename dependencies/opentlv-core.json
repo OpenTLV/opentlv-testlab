@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "repository": "OpenTLV/opentlv",
+  "version": "0.8.0",
+  "tag": "v0.8.0",
+  "commit": "345c77acb29266036df5f27d04ce315bb61853cc",
+  "release_id": 425487758,
+  "base_url": "https://github.com/OpenTLV/opentlv/releases/download/v0.8.0/",
+  "source_directory": "OpenTLV-0.8.0",
+  "archive": "OpenTLV-0.8.0-source.tar.gz",
+  "assets": {
+    "OpenTLV-0.8.0-source.tar.gz": "ba0c009377b980a91bf6705e4fe5378ee7029f5eb32182d01136de2fcceb555f",
+    "release-manifest.json": "48e4bfdb6c83d339c6cf18dc8138f55b6a32288dcd73f687c26d9043b8bae821"
+  }
+}

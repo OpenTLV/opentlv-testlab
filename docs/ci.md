@@ -124,6 +124,12 @@ the rest still run.
 
 ## Limits
 
+The separate [Rust differential Fast job](rust-differential.md#bounds-and-ci) builds Core and
+der-parser, enforces process budgets, verifies repeated reports and failure probes, and fails on
+every shared mismatch. It uses exact verified Cargo registry caching and freshly downloads Core.
+Its reports and setup logs upload on failure; reviewed reference divergences remain failing
+results. This job is not part of the Extended Lua suite.
+
 - `Extended` runs the same committed fixtures as `Fast`. It adds setup paths, an
   architecture and repeat runs, not new inputs.
 - It only tests Lua 5.2 on Ubuntu 24.04. Other Lua versions and platforms remain outside
