@@ -52,6 +52,10 @@ second locally, and the BER and CER corpus under half a second. Moving the BER c
 would save almost nothing and leave fixture changes untested until someone started the
 manual suite.
 
+[Differential fuzzing](differential-fuzzing.md) is not part of this gate or of Extended. Its
+inputs are exploratory and untriaged, and this repository's logs and artifacts are public, so it
+runs only locally. Fast runs its unit tests with the other Python tests.
+
 ## Extended suite
 
 [`extended.yml`](../.github/workflows/extended.yml) runs the Python tests and

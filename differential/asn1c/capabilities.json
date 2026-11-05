@@ -702,6 +702,45 @@
       "expected": {"decode": {"status": "accepted", "code": "RC_OK", "consumed": 4, "value": {"kind": "object_identifier", "value": null}}, "encode": {"status": "encoded", "wire": "06022a83"}}
     },
     {
+      "id": "ber-oid-arc-above-32-bits",
+      "area": "ber-decode",
+      "classification": "not-comparable",
+      "description": "OBJECT IDENTIFIER 1.2.4294967296, one above the largest 32-bit arc",
+      "rule": "X.690 8.19.2: a subidentifier is an unbounded unsigned integer",
+      "reason": "asn1c reduces the arc modulo 2^32 and reports 1.2.0, while its DER encoder emits the original octets",
+      "type": "Identifier",
+      "decode": "ber",
+      "encode": "der",
+      "wire": "06 06 2a 90 80 80 80 00",
+      "expected": {"decode": {"status": "accepted", "code": "RC_OK", "consumed": 8, "value": {"kind": "object_identifier", "value": "1.2.0"}}, "encode": {"status": "encoded", "wire": "06062a9080808000"}}
+    },
+    {
+      "id": "ber-bit-string-constructed-empty",
+      "area": "ber-decode",
+      "classification": "unsupported",
+      "description": "Constructed BIT STRING with no segments",
+      "rule": "X.690 8.6.4: a constructed BIT STRING holds zero, one or more segments, so none is the empty bit string",
+      "reason": "asn1c decodes no buffer for it, and its constraint check then rejects the value as not given",
+      "type": "Bits",
+      "decode": "ber",
+      "encode": "der",
+      "wire": "23 00",
+      "expected": {"decode": {"status": "rejected", "code": "RC_OK", "consumed": 2, "error": "constraint"}}
+    },
+    {
+      "id": "ber-bit-string-segment-no-initial-octet",
+      "area": "ber-decode",
+      "classification": "not-comparable",
+      "description": "Constructed BIT STRING whose last segment has no initial octet",
+      "rule": "X.690 8.6.4: each segment is a BIT STRING encoding, with the initial octet of 8.6.2",
+      "reason": "asn1c accepts the segment without its initial octet and ignores it",
+      "type": "Bits",
+      "decode": "ber",
+      "encode": "der",
+      "wire": "23 06 03 02 00 ff 03 00",
+      "expected": {"decode": {"status": "accepted", "code": "RC_OK", "consumed": 8, "value": {"kind": "bit_string", "unused_bits": 0, "value": "ff"}}, "encode": {"status": "encoded", "wire": "030200ff"}}
+    },
+    {
       "id": "der-decode-canonical",
       "area": "der-decode",
       "classification": "supported",

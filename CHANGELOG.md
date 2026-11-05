@@ -15,10 +15,31 @@
 
 ### Fixed
 
+- Give the OpenTLV DER adapter the Tree Writer capacity that the BER and CER adapter already has,
+  so DER values longer than 1024 bytes are encoded instead of failing with a buffer error. (#23)
+- Correct the DER guide and the asn1c typed values, which said that asn1c reports OBJECT IDENTIFIER
+  arcs above 2^32-1 as `null`; it reduces them modulo 2^32. (#23)
 - Correct the capability check count, a broken dependency-setup link and the verification
   notes that still described hosted Fast and Extended as pending. (#8)
 
 ### Added
+
+- Differential fuzzing: `scripts/run_fuzz.py` generates typed values and mutated BER, DER and CER
+  encodings, feeds the same input to OpenTLV Lua v0.3.0 and the asn1c reference, and judges both
+  against the X.690 reference. `scripts/x690.py` gains a DER profile and rule profiles that model
+  what OpenTLV Lua implements, so a documented gap is never mistaken for a defect. Every case
+  derives from a seed, through a generator that gives the same case on every platform, and can be
+  rerun alone. A difference that a documented limitation or capability probe explains is
+  classified as such. Any other is a semantic or canonical mismatch, crash or sanitizer report:
+  it is minimized, rechecked against X.690 and kept locally, with reproduction commands and a
+  draft fixture for the committed corpus. `setup_asn1c.py --sanitize` builds the asn1c adapter
+  with AddressSanitizer and UndefinedBehaviorSanitizer, leaving out only the check that a benign
+  zero-length copy in asn1c's runtime trips. The fuzzer refuses public CI and output in the
+  tracked tree, Fast runs only its unit tests, and `docs/differential-fuzzing.md` documents the
+  feature intersection, triage and disclosure policy. Three new asn1c capability probes record
+  what fuzzing found: arcs above 2^32-1 are reduced modulo 2^32, a BIT STRING segment without
+  its initial octet is ignored, and an empty constructed BIT STRING is rejected. No OpenTLV
+  defect was found. (#23)
 
 - BER and CER differential: `scripts/run_ber_cer_differential.py` decodes and encodes 154
   hand-written fixtures, 99 BER and 55 CER, with OpenTLV Lua v0.3.0 and the asn1c reference, and

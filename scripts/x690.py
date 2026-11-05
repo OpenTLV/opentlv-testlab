@@ -2,24 +2,42 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Marek Cingel
 
-"""Independent ITU-T X.690 BER and CER reference for hand-written fixtures.
+"""Independent ITU-T X.690 BER, CER and DER reference for hand-written fixtures and fuzzing.
 
-`decode()` reads BER or CER into the typed values of the asn1c adapter, or raises `Invalid`
+`decode()` reads BER, CER or DER into the typed values of the asn1c adapter, or raises `Invalid`
 with a normalized error; `cer_encode()` writes the CER encoding of a typed value. Neither
 shares code with OpenTLV or asn1c. A fixture that disagrees with them is a fixture error, and
 an encoder whose output they read as another value fails its check.
+
+A `Rules` profile switches the canonical rule groups on or off, so the fuzzer can also ask what
+a library that implements only some of them should decide.
 """
 
 import argparse
 import json
 import sys
+from typing import NamedTuple
 
 if __package__:
-    from .run_der_differential import LEAVES, der_length, identifier_number, leaf_contents, load_types, set_of_key
+    from .run_der_differential import (LEAVES, der_encode, der_length, identifier_number, leaf_contents, load_types,
+                                       set_of_key)
 else:
-    from run_der_differential import LEAVES, der_length, identifier_number, leaf_contents, load_types, set_of_key
+    from run_der_differential import (LEAVES, der_encode, der_length, identifier_number, leaf_contents, load_types,
+                                      set_of_key)
 
-RULES = ("ber", "cer")
+
+class Rules(NamedTuple):
+    """Which X.690 rules apply beyond BER."""
+
+    framing: str  # "ber", "cer" (9.1) or "der" (10.1): the length forms
+    contents: bool  # Canonical contents: BOOLEAN TRUE is ff (11.1), unused bits are zero (11.2.1)
+    strings: bool  # CER segmentation (9.2) or DER primitive strings (10.2)
+    schema: bool  # SET order (9.3, 10.3), DEFAULT omission (11.5) and SET OF order (11.6)
+
+
+PROFILES = {"ber": Rules("ber", False, False, False), "cer": Rules("cer", True, True, True),
+            "der": Rules("der", True, True, True)}
+RULES = tuple(PROFILES)
 STRINGS = ("bit_string", "octet_string", "ia5string")
 # A restricted character string is encoded as an implicitly tagged OCTET STRING (8.23.5),
 # so its segments are OCTET STRING encodings.
@@ -88,6 +106,8 @@ def parse_element(data, position, end, open_end, rules, depth):
     if first == 0x80:
         if not constructed:
             raise Invalid("invalid", "indefinite length on a primitive value (8.1.3.2)")
+        if rules.framing == "der":
+            raise Invalid("invalid", "indefinite length (10.1)")
         while True:
             if position >= end:
                 missing(open_end, "missing end-of-contents")
@@ -103,7 +123,7 @@ def parse_element(data, position, end, open_end, rules, depth):
     else:
         if first == 0xFF:
             raise Invalid("invalid", "reserved length octet ff (8.1.3.5)")
-        if rules == "cer" and constructed:
+        if rules.framing == "cer" and constructed:
             raise Invalid("invalid", "definite length on a constructed value (9.1)")
         length = first
         if first & 0x80:
@@ -113,8 +133,9 @@ def parse_element(data, position, end, open_end, rules, depth):
             octets = data[position:position + count]
             position += count
             length = int.from_bytes(octets, "big")
-            if rules == "cer" and (length < 0x80 or octets[0] == 0):
-                raise Invalid("invalid", "length not in its fewest octets (9.1)")
+            if rules.framing != "ber" and (length < 0x80 or octets[0] == 0):
+                clause = "9.1" if rules.framing == "cer" else "10.1"
+                raise Invalid("invalid", f"length not in its fewest octets ({clause})")
         if position + length > end:
             missing(open_end, "value past the end of its container")
         stop = position + length
@@ -128,7 +149,17 @@ def parse_element(data, position, end, open_end, rules, depth):
     return Element(identifier, constructed, contents, children, data[start:position]), position
 
 
+def profile(rules):
+    """The Rules of a profile name, or the Rules given."""
+    if isinstance(rules, Rules):
+        return rules
+    if rules not in PROFILES:
+        raise ValueError(f"Unknown encoding rules: {rules}")
+    return PROFILES[rules]
+
+
 def parse(data, rules):
+    rules = profile(rules)
     if not data:
         raise Invalid("empty", "no input")
     element, end = parse_element(data, 0, len(data), True, rules, 0)
@@ -159,7 +190,7 @@ def segments(kind, element, rules):
         if primitive_identifier(child.identifier) != SEGMENT_IDENTIFIERS[kind]:
             raise Invalid("invalid", f"segment with identifier {child.identifier.hex()} (8.6.4, 8.7.3)")
         if child.constructed:
-            if rules == "cer":
+            if rules.strings and rules.framing == "cer":
                 raise Invalid("invalid", "constructed segment (9.2)")
             found += segments(kind, child, rules)
         else:
@@ -169,12 +200,15 @@ def segments(kind, element, rules):
 
 def string_contents(kind, element, rules):
     """The contents of a string in either form, as one primitive encoding would hold them."""
+    cer = rules.strings and rules.framing == "cer"
     if not element.constructed:
-        if rules == "cer" and len(element.contents) > SEGMENT_OCTETS:
+        if cer and len(element.contents) > SEGMENT_OCTETS:
             raise Invalid("invalid", f"primitive string of more than {SEGMENT_OCTETS} octets (9.2)")
         return element.contents
+    if rules.strings and rules.framing == "der":
+        raise Invalid("invalid", "constructed string (10.2)")
     parts = segments(kind, element, rules)
-    if rules == "cer":
+    if cer:
         if sum(map(len, parts)) - (len(parts) - 1) * (kind == "bit_string") <= SEGMENT_OCTETS:
             raise Invalid("invalid", f"constructed string of at most {SEGMENT_OCTETS} octets (9.2)")
         if any(len(part) != SEGMENT_OCTETS for part in parts[:-1]) or not parts[-1]:
@@ -195,8 +229,8 @@ def leaf_value(kind, contents, rules):
     if kind == "boolean":
         if len(contents) != 1:
             raise Invalid("invalid", "BOOLEAN contents are one octet (8.2.1)")
-        if rules == "cer" and contents[0] not in (0x00, 0xFF):
-            raise Invalid("invalid", "CER TRUE is ff (11.1)")
+        if rules.contents and contents[0] not in (0x00, 0xFF):
+            raise Invalid("invalid", "canonical TRUE is ff (11.1)")
         return {"kind": kind, "value": contents[0] != 0}
     if kind == "integer":
         if not contents:
@@ -209,8 +243,10 @@ def leaf_value(kind, contents, rules):
             raise Invalid("invalid", "NULL has no contents (8.8.2)")
         return {"kind": kind}
     if kind == "object_identifier":
-        if not contents or contents[-1] & 0x80:
-            raise Invalid("invalid", "OBJECT IDENTIFIER needs complete subidentifiers (8.19.2)")
+        if not contents:
+            raise Invalid("invalid", "OBJECT IDENTIFIER without contents (8.19.2)")
+        if contents[-1] & 0x80:
+            raise Invalid("invalid", "OBJECT IDENTIFIER with an unterminated last subidentifier (8.19.2)")
         arcs, value, first = [], 0, True
         for octet in contents:
             if first and octet == 0x80:
@@ -228,8 +264,8 @@ def leaf_value(kind, contents, rules):
         if unused > 7 or (unused and not data):
             raise Invalid("invalid", "invalid number of unused bits (8.6.2.2, 8.6.2.3)")
         if data and data[-1] & ((1 << unused) - 1):
-            if rules == "cer":
-                raise Invalid("invalid", "CER unused bits are zero (11.2.1)")
+            if rules.contents:
+                raise Invalid("invalid", "canonical unused bits are zero (11.2.1)")
             data[-1] &= 0xFF << unused & 0xFF  # The sender's choice; not part of the value (8.6.2.3).
         return {"kind": kind, "unused_bits": unused, "value": data.hex()}
     if kind == "ia5string" and any(octet >= 0x80 for octet in contents):
@@ -238,7 +274,7 @@ def leaf_value(kind, contents, rules):
 
 
 def check_default(field, value, rules):
-    if rules == "cer" and "default" in field and value == field["default"]:
+    if rules.schema and "default" in field and value == field["default"]:
         raise Invalid("invalid", f"component {field['name']} encodes its DEFAULT value (11.5)")
 
 
@@ -277,8 +313,8 @@ def set_value(schema, element, rules, depth):
             raise Invalid("invalid", f"repeated component {field['name']}")
         found[field["name"]] = child
         order.append(identifier_number(child.identifier.hex()))
-    if rules == "cer" and order != sorted(order):
-        raise Invalid("invalid", "SET components out of tag order (9.3)")
+    if rules.schema and order != sorted(order):
+        raise Invalid("invalid", "SET components out of tag order (9.3, 10.3)")
     return {"kind": "set", "fields": fields_value(schema, found, rules, depth)}
 
 
@@ -306,7 +342,7 @@ def value_of(schema, element, rules, depth=0):
     if kind == "set":
         return set_value(schema, element, rules, depth)
     items = [value_of(schema["item"], child, rules, depth + 1) for child in element.children]
-    if kind == "set_of" and rules == "cer":
+    if kind == "set_of" and rules.schema:
         encodings = [child.encoding for child in element.children]
         width = max(map(len, encodings), default=0)
         if encodings != sorted(encodings, key=lambda encoding: set_of_key(encoding, width)):
@@ -315,8 +351,13 @@ def value_of(schema, element, rules, depth=0):
 
 
 def decode(schema, data, rules):
-    """The typed value of `data` under BER or CER; `Invalid` names why it has none."""
-    return value_of(schema, parse(data, rules), rules)
+    """The typed value of `data` under BER, CER, DER or a `Rules` profile; `Invalid` names why it has none."""
+    rules = profile(rules)
+    value = value_of(schema, parse(data, rules), rules)
+    if rules == PROFILES["der"] and der_encode(schema, value) != data:
+        # Every DER rule is checked above, so the independent DER encoder must agree.
+        raise AssertionError(f"X.690 reference accepted {data.hex()} as DER, but its DER encoding differs")
+    return value
 
 
 # --- CER encoder -------------------------------------------------------------------------------
@@ -392,7 +433,7 @@ def main(arguments=None):
         return 1
     result = "accept" if args.encoding == "ber" else "canonical"
     if args.encoding == "cer" and cer_encode(types[args.type], value) != bytes.fromhex(args.wire):
-        raise AssertionError("A CER decoding must re-encode to its input")
+        raise AssertionError("A CER decoding must re-encode to its input")  # decode() checks DER itself.
     print(json.dumps({"result": result, "value": value}, sort_keys=True))
     return 0
 

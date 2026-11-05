@@ -22,6 +22,7 @@ binding repository.
 | [asn1c reference adapter](docs/asn1c-reference.md) | The optional C reference: pin, setup, adapter contract and what asn1c can decide |
 | [DER differential](docs/der-differential.md) | OpenTLV DER decoding and encoding against asn1c and X.690: checks, corpus, limitations and results |
 | [BER and CER differential](docs/ber-cer-differential.md) | OpenTLV BER and CER interoperability with asn1c, judged against an independent X.690 reference |
+| [Differential fuzzing](docs/differential-fuzzing.md) | Local, exploratory BER, DER and CER fuzzing against asn1c and X.690: strategies, feature intersection, findings, triage and disclosure policy |
 
 ## Reproduce a comparison locally
 
@@ -105,7 +106,9 @@ runtime or timeout fails the command.
 | `python3 scripts/check_asn1c.py` | Rerun the asn1c capability probes on the adapter from a passed setup |
 | `python3 scripts/run_der_differential.py` | Compare OpenTLV DER with asn1c; see the [DER guide](docs/der-differential.md) |
 | `python3 scripts/run_ber_cer_differential.py` | Compare OpenTLV BER and CER with asn1c; see the [BER and CER guide](docs/ber-cer-differential.md) |
-| `python3 scripts/x690.py TYPE HEX` | Decode bytes with the independent X.690 reference that BER and CER fixtures must match |
+| `python3 scripts/x690.py TYPE HEX` | Decode bytes with the independent X.690 reference that BER and CER fixtures must match; `--encoding der` or `cer` applies a canonical encoding |
+| `python3 scripts/setup_asn1c.py --sanitize` | Build the asn1c adapter with AddressSanitizer and UndefinedBehaviorSanitizer for fuzzing |
+| `python3 scripts/run_fuzz.py` | Fuzz OpenTLV BER, DER and CER against asn1c locally; see the [fuzzing guide](docs/differential-fuzzing.md) |
 
 ## Supported BER subset
 
@@ -161,7 +164,7 @@ the bytes, both results, versions and reproduction commands.
 
 An optional second reference builds [`vlm/asn1c`](https://github.com/vlm/asn1c) v0.9.29 from
 its verified release archive, generates C code from a versioned TestLab schema and audits the
-resulting adapter against 71 committed probes. It needs only Python, a C compiler and GNU Make
+resulting adapter against 80 committed probes. It needs only Python, a C compiler and GNU Make
 on Linux or WSL, and nothing from the Lua setup:
 
 ```sh
@@ -188,6 +191,21 @@ and their noncanonical and malformed variants, and checks both encoders byte for
 other's output. A fixture declares what a library cannot decide, such as OpenTLV Lua's missing DER
 schema layer or asn1c's accepted empty INTEGER, so a reference limitation never reads as an OpenTLV
 defect. The [DER guide](docs/der-differential.md) lists the checks, coverage and results.
+
+## Differential fuzzing
+
+Beyond the committed corpora, a local fuzzer generates values and mutated encodings, feeds the same
+input to OpenTLV Lua and a sanitized asn1c, and judges both against the X.690 reference:
+
+```sh
+python3 scripts/setup_asn1c.py --sanitize
+python3 scripts/run_fuzz.py --seed 1 --iterations 5000
+```
+
+A difference that a documented limitation or capability probe explains is classified as such. Any
+other is a finding, minimized, rechecked against X.690 and kept under `build/fuzz` with everything
+needed to reproduce it. Fuzz inputs and findings stay local until triage and never go to public CI;
+see the [fuzzing guide](docs/differential-fuzzing.md#disclosure-policy).
 
 ## Versions and cache
 
@@ -228,7 +246,8 @@ python3 scripts/run_extended.py --lua lua5.2
 ```
 
 See [Fast gate and extended suite](docs/ci.md) for what each one checks and how to read
-the result.
+the result. Neither runs the exploratory [fuzzer](docs/differential-fuzzing.md#ci); Fast runs only
+its unit tests.
 
 ## Limits
 
