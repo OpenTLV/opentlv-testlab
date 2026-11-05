@@ -217,7 +217,7 @@ class RustSetupTests(unittest.TestCase):
         self.assertIn("x86_64-unknown-linux-gnu-1.78.0", job)
         self.assertIn("scripts/check_rust_reference.py --verify-cache", job)
         self.assertIn("scripts/check_rust_differential.py", job)
-        self.assertIn("run: python3 scripts/run_rust_differential.py", job)
+        self.assertIn("run: python3 scripts/check_rust_regressions.py", job)
         self.assertIn("if: always()", job)
         self.assertNotIn("--core-assets", job)
 

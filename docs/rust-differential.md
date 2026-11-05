@@ -20,6 +20,7 @@ python3 scripts/check_rust_reference.py --verify-cache
 python3 scripts/setup_rust_differential.py
 python3 scripts/check_rust_differential.py
 python3 scripts/run_rust_differential.py
+python3 scripts/check_rust_regressions.py
 ```
 
 On Windows use `python` instead of `python3`. Setup downloads the published Core source archive
@@ -112,12 +113,41 @@ Exit **1** means setup/process/protocol failure or inconclusive evidence on a sh
 Crashes, timeouts, memory exhaustion and malformed output never become input rejections or passes.
 A failed run replaces the output report and records the active fixture and completed observations.
 
-The reviewed corpus currently exposes reference differences; the complete gate is expected to
-remain nonzero until those differences are resolved through a reviewed dependency or contract
-change. There is no allowlist, expectation rewriting or `continue-on-error` to turn them green.
-The adapter audit characterizes the observed reference behavior without changing the oracle.
-Mismatches are observations requiring triage, not confirmed defect claims; follow-up reporting
-and cross-repository actions remain in #32 and require the normal review/disclosure process.
+The standards runner remains nonzero while the reviewed corpus exposes shared differences. The
+separate CI regression gate below checks the explicitly recorded reference behavior. It preserves
+the standards verdict, fixture classifications, expectations and agreement denominator. Follow-up
+reporting and cross-repository actions remain in #32 under the normal review/disclosure process.
+
+### Explicit reference divergence baseline
+
+`check_rust_regressions.py` runs a fresh, complete comparison and validates it against
+[`divergences.json`](../differential/rust/divergences.json). This is a regression gate, not a
+standards-conformance gate. It writes separate `regressions.json` and `regressions.md` reports.
+The comparison report still says `mismatch`, with 46/52 shared agreement; the six divergences
+are never converted to passes. The raw runner continues to exit 3.
+
+The baseline contains the exact observations of **both** participants for six named cases,
+bound to canonical JSON hashes of the complete corpus and both dependency pins. Each entry cites
+the pinned source path, capability test and hosted evidence, and explains whether it is a
+reference acceptance or a diagnostic-category difference:
+
+- `asn1-rs` 0.7.2 `src/ber/parser.rs::parse_identifier` accumulates high-tag digits without
+  checking a zero first digit or requiring short form below 31. Its bounds check returns
+  `InvalidTag` when the input ends before the identifier does.
+- `asn1-rs` 0.7.2 `src/header.rs::FromDer::from_der` converts the long-form length without
+  enforcing its shortest encoding or rejecting leading zero length octets. The short-form
+  constraint is commented out in the pinned published source.
+
+Exit 0 from the regression gate requires every other shared fixture to pass and all six cases
+to match their recorded full observations, including native errors and Core's correct rejection.
+New mismatches, a Core regression, changed reference behavior, missing/duplicate fixtures,
+inconclusive shared evidence, changed pins/corpus, stale reports and process/setup failures exit 1.
+An upstream fix that removes a divergence also fails until its baseline entry is reviewed.
+The gate has no automatic baseline-update or arbitrary-report-input option.
+
+Changes to this baseline require review of the source/API behavior, X.690 expectation and exact
+observations. Do not add a case simply because CI failed. Never relax Core's expectation or change
+a fixture to unsupported to fit a reference difference. No third-party source is patched.
 
 ### Local execution evidence
 
@@ -136,8 +166,14 @@ Core met all 52 shared expectations. The reference disagreed on these unchanged 
 The final two are diagnostic-category differences, not acceptance of malformed input. Combined
 shared agreement was 46/52 (88.46%); BER was 26/28 (92.86%) and DER 20/24 (83.33%). These are
 fixture-scoped results, with the limitations above. The minimum Rust 1.78.0 build and all 12
-reference capability tests also passed. Hosted Fast CI and Linux execution have not been run
-for these local changes; no Rust binding, upstream defect confirmation or publication is claimed.
+reference capability tests also passed.
+
+The original [PR #34 Rust job](https://github.com/OpenTLV/opentlv-testlab/actions/runs/42055907418/job/127344106069)
+at commit `4ebc300f80395c717045abcb640295d89e55c940` passed setup and failure probes on Linux with
+Rust 1.78.0, then failed at the standards runner's exit 3. Its downloaded artifact contains all
+126 observations, exactly matching the local Windows observations. The new regression gate was
+validated locally against both that hosted report and a fresh local comparison. A hosted run
+of the corrected workflow is still pending. No Rust binding validation or publication is claimed.
 
 ## Bounds and CI
 
@@ -166,8 +202,10 @@ python3 -m unittest discover -s tests -p 'test_rust*.py' -v
 Fast has a dedicated Ubuntu 24.04 x86-64 job using Rust 1.78.0. The external cache key includes OS,
 target, toolchain, manifest, lockfile and dependency inventory with no fallback keys. A cache hit
 is verified before compilation or acquisition. Core, native binaries and Cargo build targets are
-never cached. The job runs policy tests, fresh setup, failure/repeat probes and the complete corpus;
-reports, receipts and build logs upload even on failure. A real shared mismatch fails the job.
+never cached. The job runs policy tests, fresh setup, failure/repeat probes and the complete corpus
+through the explicit regression gate. Reports, receipts and build logs upload even on failure.
+Unexpected or changed shared mismatches fail the job; the exact six source-audited reference
+divergences retain their failing standards verdict in the comparison report.
 Extended's existing Lua suite is unchanged; there is no separate Full workflow in this repository.
 
 Public CI can select only the committed reviewed corpus; the runner has no arbitrary-input or

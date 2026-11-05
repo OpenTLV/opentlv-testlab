@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Make the Rust differential CI job check exact, source-audited reference divergences instead of failing permanently on the six already reproduced differences. Preserve the standards runner's mismatch outcomes and exit code; reject new or changed observations, Core regressions, stale baseline entries and setup failures. (#30)
 - Give the OpenTLV DER adapter the Tree Writer capacity that the BER and CER adapter already has, so DER values longer than 1024 bytes are encoded instead of failing with a buffer error. (#23)
 - Correct the DER guide and the asn1c typed values, which said that asn1c reports OBJECT IDENTIFIER arcs above 2^32-1 as `null`; it reduces them modulo 2^32. (#23)
 - Correct the capability check count, a broken dependency-setup link and the verification notes that still described hosted Fast and Extended as pending. (#8)

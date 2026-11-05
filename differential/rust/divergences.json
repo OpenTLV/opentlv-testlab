@@ -1,0 +1,399 @@
+{
+  "schema": 1,
+  "corpus_sha256": "f21a95b8a91588d8c5d8d1f34f04bcbd69f108683c6320f8108a468aaf6f9a0f",
+  "packages_sha256": "0c450fb7c357cb4c058a8b07e4f3a8200b59041b8e47b42b2dea2e89bd9cfd89",
+  "cases": [
+    {
+      "fixture": "ber-high-tag-leading-80",
+      "kind": "reference-acceptance",
+      "reason": "The reference identifier parser accumulates base-128 digits without rejecting a zero first payload digit or requiring short form for tag numbers below 31.",
+      "evidence": [
+        "asn1-rs 0.7.2/src/ber/parser.rs::parse_identifier",
+        "differential/rust/src/lib.rs::tests::generic_parser_accepts_reviewed_nonminimal_headers",
+        "https://github.com/OpenTLV/opentlv-testlab/actions/runs/42055907418/job/127344106069"
+      ],
+      "observed": {
+        "core": {
+          "api": "tlv_format_decode(tlv_format_ber); tlv_ber_tag_number",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree"
+          ],
+          "consumed": null,
+          "contract": "rust-ber-der-1",
+          "encoding": "ber",
+          "error": {
+            "category": "invalid",
+            "native_code": "4: invalid tag",
+            "offset": null,
+            "source": "library",
+            "stage": "framing"
+          },
+          "fixture": "ber-high-tag-leading-80",
+          "participant": "core",
+          "reason": null,
+          "result": "reject",
+          "schema": 1,
+          "tree": null
+        },
+        "der-parser": {
+          "api": "parse_ber_recursive(fuel=32)",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree"
+          ],
+          "consumed": 5,
+          "contract": "rust-ber-der-1",
+          "encoding": "ber",
+          "error": null,
+          "fixture": "ber-high-tag-leading-80",
+          "participant": "der-parser",
+          "reason": null,
+          "result": "accept",
+          "schema": 1,
+          "tree": {
+            "children": [],
+            "class": "context",
+            "constructed": false,
+            "identifier_hex": "9f801f",
+            "length": {
+              "encoded_hex": "01",
+              "form": "short",
+              "value": "1"
+            },
+            "number": "31",
+            "value_hex": "aa"
+          }
+        }
+      }
+    },
+    {
+      "fixture": "ber-high-tag-unterminated",
+      "kind": "diagnostic-category",
+      "reason": "The reference rejects exhausted high-tag identifiers with InvalidTag; X.690 fixture categorizes exhausted input as truncated. Preserve the native diagnostic.",
+      "evidence": [
+        "asn1-rs 0.7.2/src/ber/parser.rs::parse_identifier",
+        "differential/rust/src/lib.rs::tests::incomplete_high_tags_use_invalid_tag_not_incomplete",
+        "https://github.com/OpenTLV/opentlv-testlab/actions/runs/42055907418/job/127344106069"
+      ],
+      "observed": {
+        "core": {
+          "api": "tlv_format_decode(tlv_format_ber); tlv_ber_tag_number",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree"
+          ],
+          "consumed": null,
+          "contract": "rust-ber-der-1",
+          "encoding": "ber",
+          "error": {
+            "category": "truncated",
+            "native_code": "3: truncated input",
+            "offset": null,
+            "source": "library",
+            "stage": "framing"
+          },
+          "fixture": "ber-high-tag-unterminated",
+          "participant": "core",
+          "reason": null,
+          "result": "reject",
+          "schema": 1,
+          "tree": null
+        },
+        "der-parser": {
+          "api": "parse_ber_recursive(fuel=32)",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree"
+          ],
+          "consumed": null,
+          "contract": "rust-ber-der-1",
+          "encoding": "ber",
+          "error": {
+            "category": "invalid",
+            "native_code": "Error(InvalidTag)",
+            "offset": null,
+            "source": "library",
+            "stage": "framing"
+          },
+          "fixture": "ber-high-tag-unterminated",
+          "participant": "der-parser",
+          "reason": null,
+          "result": "reject",
+          "schema": 1,
+          "tree": null
+        }
+      }
+    },
+    {
+      "fixture": "der-truncated-identifier",
+      "kind": "diagnostic-category",
+      "reason": "The reference rejects exhausted high-tag identifiers with InvalidTag; X.690 fixture categorizes exhausted input as truncated. Preserve the native diagnostic.",
+      "evidence": [
+        "asn1-rs 0.7.2/src/ber/parser.rs::parse_identifier",
+        "differential/rust/src/lib.rs::tests::incomplete_high_tags_use_invalid_tag_not_incomplete",
+        "https://github.com/OpenTLV/opentlv-testlab/actions/runs/42055907418/job/127344106069"
+      ],
+      "observed": {
+        "core": {
+          "api": "tlv_der_read_strict; tlv_format_decode(tlv_format_der); tlv_ber_tag_number",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree",
+            "recursive-DER-framing-and-primitive-contents"
+          ],
+          "consumed": null,
+          "contract": "rust-ber-der-1",
+          "encoding": "der",
+          "error": {
+            "category": "truncated",
+            "native_code": "3: truncated input",
+            "offset": null,
+            "source": "library",
+            "stage": "framing"
+          },
+          "fixture": "der-truncated-identifier",
+          "participant": "core",
+          "reason": null,
+          "result": "reject",
+          "schema": 1,
+          "tree": null
+        },
+        "der-parser": {
+          "api": "parse_der_recursive(fuel=32)",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree",
+            "generic-DER-root-checks; nested-SEQUENCE/SET-use-BER"
+          ],
+          "consumed": null,
+          "contract": "rust-ber-der-1",
+          "encoding": "der",
+          "error": {
+            "category": "invalid",
+            "native_code": "Error(InvalidTag)",
+            "offset": null,
+            "source": "library",
+            "stage": "framing"
+          },
+          "fixture": "der-truncated-identifier",
+          "participant": "der-parser",
+          "reason": null,
+          "result": "reject",
+          "schema": 1,
+          "tree": null
+        }
+      }
+    },
+    {
+      "fixture": "der-length-long-form-for-1",
+      "kind": "reference-acceptance",
+      "reason": "The reference FromDer header path converts long-form lengths without enforcing shortest form or rejecting leading zero length octets.",
+      "evidence": [
+        "asn1-rs 0.7.2/src/header.rs::FromDer::from_der",
+        "differential/rust/src/lib.rs::tests::generic_parser_accepts_reviewed_nonminimal_headers",
+        "https://github.com/OpenTLV/opentlv-testlab/actions/runs/42055907418/job/127344106069"
+      ],
+      "observed": {
+        "core": {
+          "api": "tlv_der_read_strict; tlv_format_decode(tlv_format_der); tlv_ber_tag_number",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree",
+            "recursive-DER-framing-and-primitive-contents"
+          ],
+          "consumed": null,
+          "contract": "rust-ber-der-1",
+          "encoding": "der",
+          "error": {
+            "category": "invalid",
+            "native_code": "6: invalid length encoding",
+            "offset": null,
+            "source": "library",
+            "stage": "framing"
+          },
+          "fixture": "der-length-long-form-for-1",
+          "participant": "core",
+          "reason": null,
+          "result": "reject",
+          "schema": 1,
+          "tree": null
+        },
+        "der-parser": {
+          "api": "parse_der_recursive(fuel=32)",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree",
+            "generic-DER-root-checks; nested-SEQUENCE/SET-use-BER"
+          ],
+          "consumed": 4,
+          "contract": "rust-ber-der-1",
+          "encoding": "der",
+          "error": null,
+          "fixture": "der-length-long-form-for-1",
+          "participant": "der-parser",
+          "reason": null,
+          "result": "accept",
+          "schema": 1,
+          "tree": {
+            "children": [],
+            "class": "universal",
+            "constructed": false,
+            "identifier_hex": "04",
+            "length": {
+              "encoded_hex": "8101",
+              "form": "long",
+              "value": "1"
+            },
+            "number": "4",
+            "value_hex": "aa"
+          }
+        }
+      }
+    },
+    {
+      "fixture": "der-length-leading-zero",
+      "kind": "reference-acceptance",
+      "reason": "The reference FromDer header path converts long-form lengths without enforcing shortest form or rejecting leading zero length octets.",
+      "evidence": [
+        "asn1-rs 0.7.2/src/header.rs::FromDer::from_der",
+        "differential/rust/src/lib.rs::tests::generic_parser_accepts_reviewed_nonminimal_headers",
+        "https://github.com/OpenTLV/opentlv-testlab/actions/runs/42055907418/job/127344106069"
+      ],
+      "observed": {
+        "core": {
+          "api": "tlv_der_read_strict; tlv_format_decode(tlv_format_der); tlv_ber_tag_number",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree",
+            "recursive-DER-framing-and-primitive-contents"
+          ],
+          "consumed": null,
+          "contract": "rust-ber-der-1",
+          "encoding": "der",
+          "error": {
+            "category": "invalid",
+            "native_code": "6: invalid length encoding",
+            "offset": null,
+            "source": "library",
+            "stage": "framing"
+          },
+          "fixture": "der-length-leading-zero",
+          "participant": "core",
+          "reason": null,
+          "result": "reject",
+          "schema": 1,
+          "tree": null
+        },
+        "der-parser": {
+          "api": "parse_der_recursive(fuel=32)",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree",
+            "generic-DER-root-checks; nested-SEQUENCE/SET-use-BER"
+          ],
+          "consumed": 5,
+          "contract": "rust-ber-der-1",
+          "encoding": "der",
+          "error": null,
+          "fixture": "der-length-leading-zero",
+          "participant": "der-parser",
+          "reason": null,
+          "result": "accept",
+          "schema": 1,
+          "tree": {
+            "children": [],
+            "class": "universal",
+            "constructed": false,
+            "identifier_hex": "04",
+            "length": {
+              "encoded_hex": "820001",
+              "form": "long",
+              "value": "1"
+            },
+            "number": "4",
+            "value_hex": "aa"
+          }
+        }
+      }
+    },
+    {
+      "fixture": "der-high-tag-form-for-30",
+      "kind": "reference-acceptance",
+      "reason": "The reference identifier parser accumulates base-128 digits without rejecting a zero first payload digit or requiring short form for tag numbers below 31.",
+      "evidence": [
+        "asn1-rs 0.7.2/src/ber/parser.rs::parse_identifier",
+        "differential/rust/src/lib.rs::tests::generic_parser_accepts_reviewed_nonminimal_headers",
+        "https://github.com/OpenTLV/opentlv-testlab/actions/runs/42055907418/job/127344106069"
+      ],
+      "observed": {
+        "core": {
+          "api": "tlv_der_read_strict; tlv_format_decode(tlv_format_der); tlv_ber_tag_number",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree",
+            "recursive-DER-framing-and-primitive-contents"
+          ],
+          "consumed": null,
+          "contract": "rust-ber-der-1",
+          "encoding": "der",
+          "error": {
+            "category": "invalid",
+            "native_code": "4: invalid tag",
+            "offset": null,
+            "source": "library",
+            "stage": "framing"
+          },
+          "fixture": "der-high-tag-form-for-30",
+          "participant": "core",
+          "reason": null,
+          "result": "reject",
+          "schema": 1,
+          "tree": null
+        },
+        "der-parser": {
+          "api": "parse_der_recursive(fuel=32)",
+          "checks": [
+            "single-root",
+            "framing",
+            "wire-tree",
+            "generic-DER-root-checks; nested-SEQUENCE/SET-use-BER"
+          ],
+          "consumed": 4,
+          "contract": "rust-ber-der-1",
+          "encoding": "der",
+          "error": null,
+          "fixture": "der-high-tag-form-for-30",
+          "participant": "der-parser",
+          "reason": null,
+          "result": "accept",
+          "schema": 1,
+          "tree": {
+            "children": [],
+            "class": "context",
+            "constructed": false,
+            "identifier_hex": "9f1e",
+            "length": {
+              "encoded_hex": "01",
+              "form": "short",
+              "value": "1"
+            },
+            "number": "30",
+            "value_hex": "aa"
+          }
+        }
+      }
+    }
+  ]
+}

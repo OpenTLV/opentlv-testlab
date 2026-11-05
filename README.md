@@ -115,6 +115,7 @@ runtime or timeout fails the command.
 | `python3 scripts/setup_rust_differential.py` | Freshly acquire pinned Core release sources and build both comparison adapters |
 | `python3 scripts/run_rust_differential.py` | Compare the reviewed BER/DER corpus with Core and der-parser; real shared mismatches exit 3 |
 | `python3 scripts/check_rust_differential.py` | Verify repeated agreement, mismatch reproduction and setup-failure reports |
+| `python3 scripts/check_rust_regressions.py` | Run the complete corpus and require exact recorded reference divergences; retain the separate standards mismatch report |
 
 ## Supported BER subset
 
@@ -257,8 +258,9 @@ its unit tests.
 
 A separate Fast job runs the [Core/der-parser differential](docs/rust-differential.md) with
 verified external Cargo caching and fresh Core source acquisition. The reviewed corpus exposes
-shared mismatches; the job deliberately fails on them and preserves both observations in its
-reports. It does not reclassify them or treat generic DER acceptance as full canonical validation.
+shared mismatches. Its regression gate requires exact recorded observations for six source-audited
+reference divergences and fails on new or changed differences. The standards report retains all
+six mismatches and its original agreement denominator. Generic DER acceptance is not full canonical validation.
 
 ## Limits
 

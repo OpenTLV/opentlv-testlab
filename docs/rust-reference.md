@@ -209,6 +209,8 @@ expectation, `mismatch` when a shared check disagrees, `unsupported` for a missi
 are excluded from pass-rate denominators. A mismatch is an observation needing triage, not a
 confirmed defect. The #29 contract validator emits no coverage percentage or differential verdict;
 the separate runner reports scoped fixture denominators and fails on shared mismatches.
+CI additionally uses an [explicit reference divergence baseline](rust-differential.md#explicit-reference-divergence-baseline)
+to detect regressions while preserving the standards runner's mismatch verdict and denominators.
 
 ## Bounds, disclosure and validation status
 
