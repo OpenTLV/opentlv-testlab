@@ -41,9 +41,14 @@ installs OpenTLV Lua fresh, builds and audits the asn1c adapter, and runs the
 code 3 and reproduce its report. It uploads both reports and setup receipts as the
 `der-differential-reports` artifact, even after a failure.
 
+A fourth independent job, `BER and CER differential against asn1c`, has the same setup and runs
+the [BER and CER corpus](ber-cer-differential.md#ber-and-cer-corpus) with its own mismatch probe.
+It uploads its reports and setup receipts as the `ber-cer-differential-reports` artifact, even
+after a failure.
+
 The Lua corpora stay in this gate. They are committed bytes with no clock, seed or network,
 and on the last hosted runs each finished within about a second; the DER corpus took under a
-second locally. Moving the BER corpus out
+second locally, and the BER and CER corpus under half a second. Moving the BER corpus out
 would save almost nothing and leave fixture changes untested until someone started the
 manual suite.
 

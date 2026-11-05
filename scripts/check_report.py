@@ -34,13 +34,21 @@ RUNNERS = {
         "receipts": lambda provenance: ["--lua-provenance", provenance["lua"],
                                         "--asn1c-provenance", provenance["asn1c"]],
     },
+    "run_ber_cer_differential.py": {
+        "packages": {"opentlv", "asn1c"},
+        "fields": ("wire", "encoding", "type", "rule", "expected", "checks", "reproduce"),
+        "receipts": lambda provenance: ["--lua-provenance", provenance["lua"],
+                                        "--asn1c-provenance", provenance["asn1c"]],
+    },
 }
 
 
 def runner_of(report):
     """The script that wrote the report, and what its reports must hold."""
     packages = set(report.get("packages", {}))
-    found = [(script, runner) for script, runner in RUNNERS.items() if runner["packages"] == packages]
+    # Runners that compare the same packages name themselves; older reports are known by their packages.
+    found = [(script, runner) for script, runner in RUNNERS.items() if runner["packages"] == packages and
+             (report.get("runner") == script if "runner" in report else script != "run_ber_cer_differential.py")]
     require(found, "Report does not name both package versions of a known runner")
     return found[0]
 
@@ -79,7 +87,8 @@ def check_report(path):
 def main(arguments=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", type=Path,
-                        help="JSON report from run_differential.py or run_der_differential.py --output")
+                        help="JSON report from run_differential.py, run_der_differential.py or "
+                             "run_ber_cer_differential.py --output")
     args = parser.parse_args(arguments)
     try:
         print(f"Reproduced {check_report(args.report)} mismatches from {args.report}")

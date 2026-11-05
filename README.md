@@ -21,6 +21,7 @@ binding repository.
 | [Fast gate and extended suite](docs/ci.md) | What each workflow checks and how to read the result |
 | [asn1c reference adapter](docs/asn1c-reference.md) | The optional C reference: pin, setup, adapter contract and what asn1c can decide |
 | [DER differential](docs/der-differential.md) | OpenTLV DER decoding and encoding against asn1c and X.690: checks, corpus, limitations and results |
+| [BER and CER differential](docs/ber-cer-differential.md) | OpenTLV BER and CER interoperability with asn1c, judged against an independent X.690 reference |
 
 ## Reproduce a comparison locally
 
@@ -103,6 +104,8 @@ runtime or timeout fails the command.
 | `python3 scripts/setup_asn1c.py` | Build asn1c, generate the schema and audit the adapter; see the [asn1c guide](docs/asn1c-reference.md) |
 | `python3 scripts/check_asn1c.py` | Rerun the asn1c capability probes on the adapter from a passed setup |
 | `python3 scripts/run_der_differential.py` | Compare OpenTLV DER with asn1c; see the [DER guide](docs/der-differential.md) |
+| `python3 scripts/run_ber_cer_differential.py` | Compare OpenTLV BER and CER with asn1c; see the [BER and CER guide](docs/ber-cer-differential.md) |
+| `python3 scripts/x690.py TYPE HEX` | Decode bytes with the independent X.690 reference that BER and CER fixtures must match |
 
 ## Supported BER subset
 

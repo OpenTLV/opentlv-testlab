@@ -1,0 +1,2918 @@
+{
+  "schema": 1,
+  "reproduction": {
+    "command": "python3 scripts/run_ber_cer_differential.py",
+    "runtime": "Lua 5.2",
+    "schema": "TestLabReference-1",
+    "packages": {
+      "opentlv": "0.3.0",
+      "asn1c": "0.9.29"
+    }
+  },
+  "fixtures": [
+    {
+      "id": "ber-integer-negative-one",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "INTEGER -1",
+      "rule": "X.690 8.3.3: two's complement",
+      "type": "Number",
+      "wire": "02 01 ff",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "-1"
+        }
+      },
+      "origin": "asn1-ber:integer-negative-one"
+    },
+    {
+      "id": "ber-integer-negative-min",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "INTEGER -128 in one octet",
+      "rule": "X.690 8.3.3: two's complement",
+      "type": "Number",
+      "wire": "02 01 80",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "-128"
+        }
+      },
+      "origin": "asn1-ber:integer-negative-min"
+    },
+    {
+      "id": "ber-integer-above-int32",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "INTEGER 2^31 needs a sign octet",
+      "rule": "X.690 8.3.2, 8.3.3",
+      "type": "Number",
+      "wire": "02 05 00 80 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "2147483648"
+        }
+      },
+      "origin": "asn1-ber:integer-above-shared-range"
+    },
+    {
+      "id": "ber-integer-2-pow-53",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "INTEGER 2^53, beyond exact Lua 5.2 numbers in lua-asn1",
+      "rule": "X.690 8.3.3",
+      "type": "Number",
+      "wire": "02 07 20 00 00 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "9007199254740992"
+        }
+      },
+      "origin": "asn1-ber:integer-beyond-exact-numbers"
+    },
+    {
+      "id": "ber-integer-above-int64",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "INTEGER 2^63 needs nine octets",
+      "rule": "X.690 8.3.2, 8.3.3",
+      "type": "Number",
+      "wire": "02 09 00 80 00 00 00 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "9223372036854775808"
+        }
+      },
+      "limitations": {
+        "opentlv.decode": "asn1.integer represents int64_t only: Core's asn1_codec.h rejects longer minimal contents with TLV_ERR_INVALID_VALUE, and the Lua codec rejects a larger argument",
+        "opentlv.encode": "asn1.integer represents int64_t only: Core's asn1_codec.h rejects longer minimal contents with TLV_ERR_INVALID_VALUE, and the Lua codec rejects a larger argument"
+      }
+    },
+    {
+      "id": "ber-null",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "NULL",
+      "rule": "X.690 8.8.2: no contents octets",
+      "type": "Nothing",
+      "wire": "05 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "null"
+        }
+      },
+      "origin": "asn1-ber:null-type"
+    },
+    {
+      "id": "ber-oid",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "OBJECT IDENTIFIER 1.2.3.4",
+      "rule": "X.690 8.19.4: first subidentifier joins two arcs",
+      "type": "Identifier",
+      "wire": "06 03 2a 03 04",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "object_identifier",
+          "value": "1.2.3.4"
+        }
+      },
+      "origin": "asn1-ber:oid-type"
+    },
+    {
+      "id": "ber-oid-multi-octet-arc",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "OBJECT IDENTIFIER 2.999.1 with multi-octet subidentifiers",
+      "rule": "X.690 8.19.2, 8.19.4",
+      "type": "Identifier",
+      "wire": "06 03 88 37 01",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "object_identifier",
+          "value": "2.999.1"
+        }
+      }
+    },
+    {
+      "id": "ber-bit-string-empty",
+      "encoding": "ber",
+      "category": "primitive",
+      "description": "Empty BIT STRING",
+      "rule": "X.690 8.6.2.3: initial octet 0 and no bits",
+      "type": "Bits",
+      "wire": "03 01 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 0,
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "ber-implicit-tag-30",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "description": "Context tag 30, the last low tag number",
+      "rule": "X.690 8.1.2.2",
+      "type": "Implicit30",
+      "wire": "9e 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      }
+    },
+    {
+      "id": "ber-high-tag-31",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "description": "Tag 31 in high-tag-number form",
+      "rule": "X.690 8.1.2.4",
+      "type": "HighTag31",
+      "wire": "9f 1f 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      },
+      "origin": "asn1-ber:high-tag-31"
+    },
+    {
+      "id": "ber-high-tag-200",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "description": "Tag 200 with two subsequent identifier octets",
+      "rule": "X.690 8.1.2.4",
+      "type": "HighTag200",
+      "wire": "9f 81 48 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      }
+    },
+    {
+      "id": "ber-high-tag-constructed",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "description": "Tag 31 on a constructed OCTET STRING",
+      "rule": "X.690 8.1.2.4, 8.7.3: an implicitly tagged string keeps both forms",
+      "type": "HighTag31",
+      "wire": "bf 1f 03 04 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      },
+      "origin": "asn1-ber:high-tag-constructed",
+      "limitations": {
+        "asn1c.decode": "asn1c requires every segment to repeat the implicit tag, so it rejects the OCTET STRING segments X.690 prescribes (capability probe ber-constructed-implicit-octet-segments)"
+      }
+    },
+    {
+      "id": "ber-application-class",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "description": "APPLICATION 1 INTEGER",
+      "rule": "X.690 8.1.2.2: class bits 01",
+      "type": "Application1",
+      "wire": "41 01 05",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "5"
+        }
+      }
+    },
+    {
+      "id": "ber-private-class-indefinite",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "description": "PRIVATE 2 OCTET STRING in constructed indefinite form",
+      "rule": "X.690 8.1.2.2, 8.7.3, 8.1.3.6",
+      "type": "Private2",
+      "wire": "e2 80 04 01 41 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      },
+      "limitations": {
+        "asn1c.decode": "asn1c requires every segment to repeat the implicit tag, so it rejects the OCTET STRING segments X.690 prescribes (capability probe ber-constructed-implicit-octet-segments)"
+      }
+    },
+    {
+      "id": "ber-explicit-tag-indefinite",
+      "encoding": "ber",
+      "category": "tag-boundary",
+      "description": "Explicit tag 5 with an indefinite length",
+      "rule": "X.690 8.14.2, 8.1.3.6",
+      "type": "Explicit5",
+      "wire": "a5 80 02 01 05 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "integer",
+          "value": "5"
+        }
+      },
+      "limitations": {
+        "asn1c.decode": "asn1c rejects an indefinite length on an explicit tag around a primitive type (capability probe ber-explicit-indefinite-primitive)"
+      }
+    },
+    {
+      "id": "ber-high-tag-leading-80",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "Tag number with a leading zero septet",
+      "rule": "X.690 8.1.2.4.2 c: the first subsequent octet is not 80",
+      "type": "HighTag31",
+      "wire": "9f 80 1f 01 aa",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:high-tag-leading-80",
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts a tag number with a leading zero septet (capability probe ber-high-tag-leading-zero)"
+      }
+    },
+    {
+      "id": "ber-high-tag-unterminated",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "High tag number without its last octet",
+      "rule": "X.690 8.1.2.4.2: bit 8 is one on all but the last octet",
+      "type": "HighTag200",
+      "wire": "9f 81",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "asn1-ber:high-tag-unterminated"
+    },
+    {
+      "id": "ber-high-tag-introducer-only",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "High-tag introducer without a tag number",
+      "rule": "X.690 8.1.2.4.1",
+      "type": "HighTag31",
+      "wire": "1f",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "asn1-ber:high-tag-introducer-only"
+    },
+    {
+      "id": "ber-length-128",
+      "encoding": "ber",
+      "category": "length-boundary",
+      "description": "Length 128, the first long form",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 81 80 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        }
+      },
+      "origin": "asn1-ber:long-length-128"
+    },
+    {
+      "id": "ber-length-255",
+      "encoding": "ber",
+      "category": "length-boundary",
+      "description": "Length 255 in one length octet",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 81 ff 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        }
+      },
+      "origin": "asn1-ber:long-length-255"
+    },
+    {
+      "id": "ber-length-256",
+      "encoding": "ber",
+      "category": "length-boundary",
+      "description": "Length 256 in two length octets",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 82 01 00 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        }
+      },
+      "origin": "asn1-ber:long-length-256"
+    },
+    {
+      "id": "ber-length-long-form-for-1",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "Long form for length 1",
+      "rule": "X.690 8.1.3.2 b: the sender may use the long form for any length",
+      "type": "Octets",
+      "wire": "04 81 01 aa",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "aa"
+        }
+      },
+      "origin": "der-canonical:length-long-form-for-1"
+    },
+    {
+      "id": "ber-length-long-form-for-3",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "Long form for length 3",
+      "rule": "X.690 8.1.3.2 b",
+      "type": "Octets",
+      "wire": "04 81 03 41 42 43",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "414243"
+        }
+      },
+      "origin": "asn1-ber:length-nonminimal-one-octet"
+    },
+    {
+      "id": "ber-length-leading-zero",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "Long-form length with a leading zero octet",
+      "rule": "X.690 8.1.3.5: no rule limits BER to the fewest length octets",
+      "type": "Octets",
+      "wire": "04 82 00 03 41 42 43",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "414243"
+        }
+      },
+      "origin": "asn1-ber:length-nonminimal-two-octets"
+    },
+    {
+      "id": "ber-length-long-form-zero",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "Long form for an empty value",
+      "rule": "X.690 8.1.3.2 b",
+      "type": "Octets",
+      "wire": "04 81 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": ""
+        }
+      },
+      "origin": "asn1-ber:length-nonminimal-zero"
+    },
+    {
+      "id": "ber-length-nine-octets",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "Length 3 in nine length octets",
+      "rule": "X.690 8.1.3.5: up to 126 subsequent length octets",
+      "type": "Octets",
+      "wire": "04 89 00 00 00 00 00 00 00 00 03 41 42 43",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "414243"
+        }
+      }
+    },
+    {
+      "id": "ber-length-three-octets-for-256",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "Length 256 in three length octets",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 83 00 01 00 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20 21 22 23 24 25 26 27 28 29 2a 2b 2c 2d 2e 2f 30 31 32 33 34 35 36 37 38 39 3a 3b 3c 3d 3e 3f 40 41 42 43 44 45 46 47 48 49 4a 4b 4c 4d 4e 4f 50 51 52 53 54 55 56 57 58 59 5a 5b 5c 5d 5e 5f 60 61 62 63 64 65 66 67 68 69 6a 6b 6c 6d 6e 6f 70 71 72 73 74 75 76 77 78 79 7a 7b 7c 7d 7e 7f 80 81 82 83 84 85 86 87 88 89 8a 8b 8c 8d 8e 8f 90 91 92 93 94 95 96 97 98 99 9a 9b 9c 9d 9e 9f a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 aa ab ac ad ae af b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 ba bb bc bd be bf c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 ca cb cc cd ce cf d0 d1 d2 d3 d4 d5 d6 d7 d8 d9 da db dc dd de df e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 ea eb ec ed ee ef f0 f1 f2 f3 f4 f5 f6 f7 f8 f9 fa fb fc fd fe ff",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+        }
+      },
+      "origin": "der-canonical:length-three-octets-for-256"
+    },
+    {
+      "id": "ber-length-reserved",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "Reserved length octet ff",
+      "rule": "X.690 8.1.3.5 c",
+      "type": "Octets",
+      "wire": "04 ff",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:length-reserved-ff"
+    },
+    {
+      "id": "ber-length-past-input",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Length far beyond the input",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 84 ff ff ff ff 41",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "asn1-ber:length-too-large-for-input"
+    },
+    {
+      "id": "ber-length-octets-missing",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Long-form length without its second octet",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 82 01",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "asn1-ber:truncated-long-header"
+    },
+    {
+      "id": "ber-length-octet-missing",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Long-form length without its only length octet",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 81",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "asn1-ber:truncated-long-header-empty"
+    },
+    {
+      "id": "ber-long-form-value-truncated",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Long-form length 128 with one value octet",
+      "rule": "X.690 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 81 80 41",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "asn1-ber:truncated-long-value"
+    },
+    {
+      "id": "ber-indefinite-sequence",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "description": "SEQUENCE with an indefinite length",
+      "rule": "X.690 8.1.3.6: indefinite form for a constructed encoding",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-indefinite-sequence-of",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "description": "SEQUENCE OF with an indefinite length",
+      "rule": "X.690 8.1.3.6",
+      "type": "NumberList",
+      "wire": "30 80 02 01 01 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence_of",
+          "items": [
+            {
+              "kind": "integer",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "origin": "der-canonical:length-indefinite"
+    },
+    {
+      "id": "ber-indefinite-empty",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "description": "Empty SEQUENCE OF with an indefinite length",
+      "rule": "X.690 8.1.3.6, 8.1.5",
+      "type": "NumberList",
+      "wire": "30 80 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence_of",
+          "items": []
+        }
+      },
+      "origin": "asn1-ber:indefinite-empty"
+    },
+    {
+      "id": "ber-indefinite-nested",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "description": "Three levels of indefinite lengths",
+      "rule": "X.690 8.1.3.6, 8.1.5: each end-of-contents closes the innermost value",
+      "type": "Nested",
+      "wire": "30 80 04 01 41 30 80 30 80 01 01 ff 02 01 05 00 00 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": "41"
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-indefinite-inside-definite",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "description": "Indefinite SEQUENCE OF inside a definite SEQUENCE",
+      "rule": "X.690 8.1.3.2, 8.1.3.6: each constructed encoding chooses its own form",
+      "type": "Nested",
+      "wire": "30 0f 04 01 41 30 80 30 06 01 01 ff 02 01 05 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": "41"
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-definite-inside-indefinite",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "description": "Definite SEQUENCE OF inside an indefinite SEQUENCE",
+      "rule": "X.690 8.1.3.2, 8.1.3.6",
+      "type": "Nested",
+      "wire": "30 80 04 01 41 30 08 30 06 01 01 ff 02 01 05 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": "41"
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-indefinite-set",
+      "encoding": "ber",
+      "category": "indefinite-length",
+      "description": "SET with an indefinite length",
+      "rule": "X.690 8.11, 8.1.3.6",
+      "type": "TaggedSet",
+      "wire": "31 80 80 01 05 81 01 ff 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "set",
+          "fields": [
+            {
+              "name": "first",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            },
+            {
+              "name": "second",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-indefinite-primitive",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "Indefinite length on a primitive OCTET STRING",
+      "rule": "X.690 8.1.3.2 a: a primitive encoding uses the definite form",
+      "type": "Octets",
+      "wire": "04 80 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:indefinite-primitive",
+      "not_comparable": {
+        "asn1c.decode": "asn1c reads 04 80 as a complete empty value, so the error surfaces as trailing input (capability probe ber-primitive-indefinite)"
+      }
+    },
+    {
+      "id": "ber-indefinite-unterminated",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Indefinite SEQUENCE ends before its end-of-contents",
+      "rule": "X.690 8.1.3.6.1",
+      "type": "Nested",
+      "wire": "30 80 04 00",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "asn1-ber:indefinite-unterminated"
+    },
+    {
+      "id": "ber-indefinite-missing-eoc",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Complete components without the end-of-contents",
+      "rule": "X.690 8.1.3.6.1",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      }
+    },
+    {
+      "id": "ber-indefinite-half-eoc",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Only the first end-of-contents octet",
+      "rule": "X.690 8.1.5: end-of-contents is two zero octets",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 00",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      }
+    },
+    {
+      "id": "ber-indefinite-unterminated-in-definite",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "Indefinite SEQUENCE OF that its definite parent ends before the end-of-contents",
+      "rule": "X.690 8.1.3.6.1, 8.1.3.4: the definite length bounds the contents",
+      "type": "Nested",
+      "wire": "30 0d 04 01 41 30 80 30 06 01 01 ff 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "ber-eoc-root",
+      "encoding": "ber",
+      "category": "end-of-contents",
+      "description": "End-of-contents as the whole input",
+      "rule": "X.690 8.1.5: only an indefinite-length value ends with end-of-contents",
+      "type": "Octets",
+      "wire": "00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:end-of-contents-root"
+    },
+    {
+      "id": "ber-eoc-in-definite",
+      "encoding": "ber",
+      "category": "end-of-contents",
+      "description": "End-of-contents inside a definite SEQUENCE OF",
+      "rule": "X.690 8.1.5",
+      "type": "NumberList",
+      "wire": "30 02 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:end-of-contents-in-definite"
+    },
+    {
+      "id": "ber-eoc-nonzero-length",
+      "encoding": "ber",
+      "category": "end-of-contents",
+      "description": "End-of-contents with a length octet 01",
+      "rule": "X.690 8.1.5: both end-of-contents octets are zero",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 00 01 00 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "ber-eoc-constructed",
+      "encoding": "ber",
+      "category": "end-of-contents",
+      "description": "End-of-contents identifier with the constructed bit",
+      "rule": "X.690 8.1.5",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 20 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "ber-eoc-extra",
+      "encoding": "ber",
+      "category": "end-of-contents",
+      "description": "A second end-of-contents after the value",
+      "rule": "X.690 8.1.5: one end-of-contents per indefinite length",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 00 00 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "trailing"
+      }
+    },
+    {
+      "id": "ber-eoc-before-component",
+      "encoding": "ber",
+      "category": "end-of-contents",
+      "description": "End-of-contents before a required component",
+      "rule": "X.690 8.9.2: every component without OPTIONAL or DEFAULT is present",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer, so schema conformance is checked only by the TestLab adapter, whose rejection is not an OpenTLV verdict"
+      }
+    },
+    {
+      "id": "ber-constructed-octets",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Constructed OCTET STRING with one segment",
+      "rule": "X.690 8.7.3: the sender may use the constructed form",
+      "type": "Octets",
+      "wire": "24 03 04 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      },
+      "origin": "asn1-ber:constructed-octets"
+    },
+    {
+      "id": "ber-constructed-octets-empty",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Constructed OCTET STRING without segments",
+      "rule": "X.690 8.7.3.2: zero, one or more segments",
+      "type": "Octets",
+      "wire": "24 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": ""
+        }
+      },
+      "origin": "asn1-ber:constructed-octets-empty"
+    },
+    {
+      "id": "ber-constructed-octets-indefinite",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Indefinite constructed OCTET STRING with two segments",
+      "rule": "X.690 8.7.3, 8.1.3.6",
+      "type": "Octets",
+      "wire": "24 80 04 02 aa bb 04 01 cc 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "aabbcc"
+        }
+      }
+    },
+    {
+      "id": "ber-constructed-octets-indefinite-empty",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Indefinite constructed OCTET STRING without segments",
+      "rule": "X.690 8.7.3.2",
+      "type": "Octets",
+      "wire": "24 80 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "ber-constructed-octets-nested",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Constructed OCTET STRING with a constructed segment",
+      "rule": "X.690 8.7.3.2: a segment may itself be constructed",
+      "type": "Octets",
+      "wire": "24 80 24 80 04 01 41 00 00 04 01 42 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "4142"
+        }
+      }
+    },
+    {
+      "id": "ber-constructed-bit-string",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Constructed BIT STRING with one segment",
+      "rule": "X.690 8.6.4",
+      "type": "Bits",
+      "wire": "23 04 03 02 00 ff",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 0,
+          "value": "ff"
+        }
+      },
+      "origin": "asn1-ber:constructed-bit-string"
+    },
+    {
+      "id": "ber-constructed-bit-string-two",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Constructed BIT STRING whose last segment has unused bits",
+      "rule": "X.690 8.6.4",
+      "type": "Bits",
+      "wire": "23 80 03 02 00 ff 03 02 04 f0 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 4,
+          "value": "fff0"
+        }
+      }
+    },
+    {
+      "id": "ber-constructed-ia5",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Constructed IA5String with OCTET STRING segments",
+      "rule": "X.690 8.23.5, 8.7.3: a character string is encoded as an implicit OCTET STRING",
+      "type": "Text",
+      "wire": "36 80 04 01 41 04 01 42 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "ia5string",
+          "value": "4142"
+        }
+      },
+      "limitations": {
+        "asn1c.decode": "asn1c requires every segment to repeat the string type's own tag, so it rejects the OCTET STRING segments X.690 prescribes (capability probe ber-constructed-ia5-octet-segments)"
+      }
+    },
+    {
+      "id": "ber-constructed-implicit-30",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Constructed OCTET STRING with implicit tag 30",
+      "rule": "X.690 8.14.3, 8.7.3",
+      "type": "Implicit30",
+      "wire": "be 80 04 01 41 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      },
+      "limitations": {
+        "asn1c.decode": "asn1c requires every segment to repeat the implicit tag, so it rejects the OCTET STRING segments X.690 prescribes (capability probe ber-constructed-implicit-octet-segments)"
+      }
+    },
+    {
+      "id": "ber-constructed-octets-segment-tag",
+      "encoding": "ber",
+      "category": "segmented",
+      "description": "Constructed OCTET STRING with an INTEGER segment",
+      "rule": "X.690 8.7.3.2",
+      "type": "Octets",
+      "wire": "24 80 02 01 05 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer, so the identifier of a string segment is checked only by the TestLab adapter, whose rejection is not an OpenTLV verdict"
+      }
+    },
+    {
+      "id": "ber-sequence-definite",
+      "encoding": "ber",
+      "category": "constructed",
+      "description": "SEQUENCE of BOOLEAN and INTEGER",
+      "rule": "X.690 8.9",
+      "type": "Pair",
+      "wire": "30 06 01 01 ff 02 01 05",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-optional-present",
+      "encoding": "ber",
+      "category": "constructed",
+      "description": "Both OPTIONAL components present",
+      "rule": "X.690 8.9.2",
+      "type": "OptionalPair",
+      "wire": "30 80 80 01 ff 81 01 05 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-choice-text",
+      "encoding": "ber",
+      "category": "constructed",
+      "description": "CHOICE of IA5String",
+      "rule": "X.690 8.13",
+      "type": "Alternative",
+      "wire": "16 01 41",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "choice",
+          "alternative": "text",
+          "value": {
+            "kind": "ia5string",
+            "value": "41"
+          }
+        }
+      }
+    },
+    {
+      "id": "ber-set-of-indefinite",
+      "encoding": "ber",
+      "category": "constructed",
+      "description": "SET OF with an indefinite length",
+      "rule": "X.690 8.12, 8.1.3.6",
+      "type": "NumberSet",
+      "wire": "31 80 02 01 01 02 01 02 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "set_of",
+          "items": [
+            {
+              "kind": "integer",
+              "value": "1"
+            },
+            {
+              "kind": "integer",
+              "value": "2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-boolean-true-01",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "TRUE encoded as 01",
+      "rule": "X.690 8.2.2: any nonzero octet is TRUE in BER",
+      "type": "Flag",
+      "wire": "01 01 01",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "boolean",
+          "value": true
+        }
+      },
+      "origin": "asn1-ber:boolean-noncanonical",
+      "limitations": {
+        "opentlv.decode": "asn1.boolean applies the CER and DER rule of X.690 11.1 to BER as well: Core's asn1_codec.h documents that a BER TRUE other than ff is rejected with TLV_ERR_INVALID_VALUE"
+      }
+    },
+    {
+      "id": "ber-bit-string-padding",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "BIT STRING with set unused bits",
+      "rule": "X.690 8.6.2.3: the unused bits are the sender's choice and not part of the value",
+      "type": "Bits",
+      "wire": "03 02 05 a1",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 5,
+          "value": "a0"
+        }
+      },
+      "origin": "asn1-ber:bit-string-padding",
+      "limitations": {
+        "opentlv.decode": "asn1.bit_string requires clear unused bits (X.690 11.2.1) for BER as well, as Core's asn1_codec.h documents, although BER leaves them to the sender"
+      }
+    },
+    {
+      "id": "ber-bit-string-padding-7",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "BIT STRING with seven set unused bits",
+      "rule": "X.690 8.6.2.3",
+      "type": "Bits",
+      "wire": "03 02 07 81",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 7,
+          "value": "80"
+        }
+      },
+      "origin": "der-canonical:bit-string-padding-set",
+      "limitations": {
+        "opentlv.decode": "asn1.bit_string requires clear unused bits (X.690 11.2.1) for BER as well, as Core's asn1_codec.h documents, although BER leaves them to the sender"
+      }
+    },
+    {
+      "id": "ber-default-encoded",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "DEFAULT component encoded with its default value",
+      "rule": "X.690 8.9.2: a DEFAULT component may be present in BER",
+      "type": "DefaultFlag",
+      "wire": "30 06 01 01 00 02 01 05",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": false
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      },
+      "origin": "der-canonical:default-encoded"
+    },
+    {
+      "id": "ber-set-unsorted",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "SET components in reverse tag order",
+      "rule": "X.690 8.11.2: SET components in any order",
+      "type": "TaggedSet",
+      "wire": "31 06 81 01 ff 80 01 05",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "set",
+          "fields": [
+            {
+              "name": "first",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            },
+            {
+              "name": "second",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            }
+          ]
+        }
+      },
+      "origin": "der-canonical:set-unsorted"
+    },
+    {
+      "id": "ber-set-of-unsorted",
+      "encoding": "ber",
+      "category": "alternate-form",
+      "description": "SET OF items in descending order",
+      "rule": "X.690 8.12.3: SET OF items in any order",
+      "type": "NumberSet",
+      "wire": "31 06 02 01 02 02 01 01",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "set_of",
+          "items": [
+            {
+              "kind": "integer",
+              "value": "2"
+            },
+            {
+              "kind": "integer",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "origin": "der-canonical:set-of-unsorted"
+    },
+    {
+      "id": "ber-nested-mixed",
+      "encoding": "ber",
+      "category": "nested",
+      "description": "Two pairs, one definite and one indefinite, in an indefinite list",
+      "rule": "X.690 8.1.3.2, 8.1.3.6",
+      "type": "Nested",
+      "wire": "30 80 04 00 30 80 30 06 01 01 00 02 01 01 30 80 01 01 ff 02 01 02 00 00 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": ""
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": false
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "1"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "2"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-nested-constructed-name",
+      "encoding": "ber",
+      "category": "nested",
+      "description": "Nested value whose name is a constructed OCTET STRING",
+      "rule": "X.690 8.7.3, 8.9",
+      "type": "Nested",
+      "wire": "30 80 24 80 04 01 41 00 00 30 80 00 00 00 00",
+      "expected": {
+        "result": "accept",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": "41"
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": []
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ber-constructed-integer",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "INTEGER in constructed form",
+      "rule": "X.690 8.3.1: an INTEGER is primitive",
+      "type": "Number",
+      "wire": "22 03 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:constructed-integer",
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer, and Core's ber.h validates no type and form constraint, so only the TestLab adapter rejects this form; its rejection is not an OpenTLV verdict"
+      }
+    },
+    {
+      "id": "ber-constructed-boolean",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "BOOLEAN in constructed indefinite form",
+      "rule": "X.690 8.2.1: a BOOLEAN is primitive",
+      "type": "Flag",
+      "wire": "21 80 01 01 ff 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer, and Core's ber.h validates no type and form constraint, so only the TestLab adapter rejects this form; its rejection is not an OpenTLV verdict"
+      }
+    },
+    {
+      "id": "ber-primitive-sequence",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "SEQUENCE in primitive form",
+      "rule": "X.690 8.9.1: a SEQUENCE is constructed",
+      "type": "Pair",
+      "wire": "10 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:primitive-sequence",
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer, so schema conformance is checked only by the TestLab adapter, whose rejection is not an OpenTLV verdict"
+      }
+    },
+    {
+      "id": "ber-child-overruns-parent",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "Component length beyond its definite parent",
+      "rule": "X.690 8.1.3.4: the definite length bounds the contents",
+      "type": "Pair",
+      "wire": "30 03 02 05 01",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:child-overruns-parent"
+    },
+    {
+      "id": "ber-child-overruns-indefinite-parent",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Component length beyond the input in an indefinite SEQUENCE",
+      "rule": "X.690 8.1.3.6",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 05 01",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      }
+    },
+    {
+      "id": "ber-integer-leading-zero",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "INTEGER with a redundant leading zero octet",
+      "rule": "X.690 8.3.2: the first nine bits are not all zero",
+      "type": "Number",
+      "wire": "02 02 00 01",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:integer-nonminimal",
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts redundant leading INTEGER octets (capability probe ber-integer-nonminimal)"
+      }
+    },
+    {
+      "id": "ber-integer-empty",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "INTEGER without contents",
+      "rule": "X.690 8.3.1: one or more contents octets",
+      "type": "Number",
+      "wire": "02 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:integer-empty",
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts an INTEGER without contents (capability probe ber-integer-empty)"
+      }
+    },
+    {
+      "id": "ber-boolean-empty",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "BOOLEAN without contents",
+      "rule": "X.690 8.2.1: a single contents octet",
+      "type": "Flag",
+      "wire": "01 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:boolean-empty",
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts a BOOLEAN without contents as FALSE (capability probe ber-boolean-empty)"
+      }
+    },
+    {
+      "id": "ber-boolean-two-octets",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "BOOLEAN with two contents octets",
+      "rule": "X.690 8.2.1",
+      "type": "Flag",
+      "wire": "01 02 00 ff",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:boolean-two-octets",
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts two BOOLEAN contents octets (capability probe ber-boolean-two-octets)"
+      }
+    },
+    {
+      "id": "ber-bit-string-no-initial-octet",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "BIT STRING without its initial octet",
+      "rule": "X.690 8.6.2",
+      "type": "Bits",
+      "wire": "03 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:bit-string-empty-content",
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts a BIT STRING without its initial octet (capability probe ber-bit-string-no-initial-octet)"
+      }
+    },
+    {
+      "id": "ber-bit-string-unused-8",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "BIT STRING with 8 unused bits",
+      "rule": "X.690 8.6.2.2: 0 to 7 unused bits",
+      "type": "Bits",
+      "wire": "03 02 08 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:bit-string-unused-8"
+    },
+    {
+      "id": "ber-bit-string-unused-without-bits",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "Unused bits without any bit octet",
+      "rule": "X.690 8.6.2.3: an empty BIT STRING has initial octet 0",
+      "type": "Bits",
+      "wire": "03 01 03",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:bit-string-unused-without-bits"
+    },
+    {
+      "id": "ber-null-with-contents",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "NULL with a contents octet",
+      "rule": "X.690 8.8.2",
+      "type": "Nothing",
+      "wire": "05 01 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:null-with-contents"
+    },
+    {
+      "id": "ber-oid-leading-80",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "Subidentifier with a leading 80 octet",
+      "rule": "X.690 8.19.2: the leading octet of a subidentifier is not 80",
+      "type": "Identifier",
+      "wire": "06 03 2a 80 03",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:oid-leading-80",
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts a subidentifier with a leading 80 octet (capability probe ber-oid-leading-80)"
+      }
+    },
+    {
+      "id": "ber-oid-incomplete-subidentifier",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "OBJECT IDENTIFIER ending inside a subidentifier",
+      "rule": "X.690 8.19.2: bit 8 of the last octet of a subidentifier is zero",
+      "type": "Identifier",
+      "wire": "06 02 2a 83",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts an unterminated last subidentifier (capability probe ber-oid-incomplete-subidentifier)"
+      }
+    },
+    {
+      "id": "ber-ia5-above-127",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "IA5String octet 80",
+      "rule": "X.680 41: IA5 characters are 0 to 127",
+      "type": "Text",
+      "wire": "16 01 80",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:ia5-high-byte"
+    },
+    {
+      "id": "ber-wrong-universal-tag",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "OCTET STRING where INTEGER is expected",
+      "rule": "X.690 8.1.2: the identifier names the type",
+      "type": "Number",
+      "wire": "04 01 41",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:schema-wrong-universal-tag",
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer, so schema conformance is checked only by the TestLab adapter, whose rejection is not an OpenTLV verdict"
+      }
+    },
+    {
+      "id": "ber-set-repeated-component",
+      "encoding": "ber",
+      "category": "malformed",
+      "description": "SET with a repeated component",
+      "rule": "X.690 8.11.2",
+      "type": "TaggedSet",
+      "wire": "31 06 80 01 05 80 01 06",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "der-canonical:set-repeated-component",
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer, so schema conformance is checked only by the TestLab adapter, whose rejection is not an OpenTLV verdict"
+      }
+    },
+    {
+      "id": "ber-empty-input",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "No input",
+      "rule": "X.690 8.1.1: an encoding has identifier octets",
+      "type": "Octets",
+      "wire": "",
+      "expected": {
+        "result": "reject",
+        "error": "empty"
+      }
+    },
+    {
+      "id": "ber-truncated-length",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Identifier without a length",
+      "rule": "X.690 8.1.1",
+      "type": "Octets",
+      "wire": "04",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "der-canonical:truncated-length"
+    },
+    {
+      "id": "ber-truncated-value",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Length 3 with two value octets",
+      "rule": "X.690 8.1.1",
+      "type": "Octets",
+      "wire": "04 03 41 42",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      }
+    },
+    {
+      "id": "ber-truncated-nested",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Definite SEQUENCE ending inside its last component",
+      "rule": "X.690 8.1.1",
+      "type": "Pair",
+      "wire": "30 06 01 01 ff 02 01",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      },
+      "origin": "der-canonical:truncated-nested"
+    },
+    {
+      "id": "ber-indefinite-segment-truncated",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Indefinite string ending inside a segment",
+      "rule": "X.690 8.1.3.6",
+      "type": "Octets",
+      "wire": "24 80 04 05 41",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      }
+    },
+    {
+      "id": "ber-trailing-octet",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "An octet after a complete value",
+      "rule": "TestLab input policy: exactly one complete value",
+      "type": "Octets",
+      "wire": "04 01 41 00",
+      "expected": {
+        "result": "reject",
+        "error": "trailing"
+      }
+    },
+    {
+      "id": "ber-trailing-after-indefinite",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "An element after an indefinite value",
+      "rule": "TestLab input policy: exactly one complete value",
+      "type": "NumberList",
+      "wire": "30 80 00 00 05 00",
+      "expected": {
+        "result": "reject",
+        "error": "trailing"
+      }
+    },
+    {
+      "id": "ber-trailing-after-long-form-zero",
+      "encoding": "ber",
+      "category": "truncated",
+      "description": "Eight octets after a long-form empty value",
+      "rule": "TestLab input policy: exactly one complete value",
+      "type": "Octets",
+      "wire": "04 81 00 31 32 33 34 35 36 37 38",
+      "expected": {
+        "result": "reject",
+        "error": "trailing"
+      },
+      "origin": "asn1-ber:length-nonminimal-zero-eight-bytes"
+    },
+    {
+      "id": "cer-boolean-true",
+      "encoding": "cer",
+      "category": "primitive",
+      "description": "TRUE",
+      "rule": "X.690 11.1: TRUE is ff",
+      "type": "Flag",
+      "wire": "01 01 ff",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "boolean",
+          "value": true
+        }
+      }
+    },
+    {
+      "id": "cer-integer-negative",
+      "encoding": "cer",
+      "category": "primitive",
+      "description": "INTEGER -129",
+      "rule": "X.690 8.3.2, 8.3.3",
+      "type": "Number",
+      "wire": "02 02 ff 7f",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "integer",
+          "value": "-129"
+        }
+      }
+    },
+    {
+      "id": "cer-null",
+      "encoding": "cer",
+      "category": "primitive",
+      "description": "NULL",
+      "rule": "X.690 8.8.2",
+      "type": "Nothing",
+      "wire": "05 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "null"
+        }
+      }
+    },
+    {
+      "id": "cer-oid",
+      "encoding": "cer",
+      "category": "primitive",
+      "description": "OBJECT IDENTIFIER 1.2.840.113549",
+      "rule": "X.690 8.19",
+      "type": "Identifier",
+      "wire": "06 06 2a 86 48 86 f7 0d",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "object_identifier",
+          "value": "1.2.840.113549"
+        }
+      }
+    },
+    {
+      "id": "cer-bit-string",
+      "encoding": "cer",
+      "category": "primitive",
+      "description": "BIT STRING with four unused zero bits",
+      "rule": "X.690 11.2.1",
+      "type": "Bits",
+      "wire": "03 02 04 f0",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 4,
+          "value": "f0"
+        }
+      }
+    },
+    {
+      "id": "cer-ia5",
+      "encoding": "cer",
+      "category": "primitive",
+      "description": "IA5String AB",
+      "rule": "X.690 8.23",
+      "type": "Text",
+      "wire": "16 02 41 42",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "ia5string",
+          "value": "4142"
+        }
+      }
+    },
+    {
+      "id": "cer-sequence",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "SEQUENCE with an indefinite length",
+      "rule": "X.690 9.1: a constructed encoding uses the indefinite form",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cer-optional-absent",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "Both OPTIONAL components absent",
+      "rule": "X.690 9.1, 8.9.2",
+      "type": "OptionalPair",
+      "wire": "30 80 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "sequence",
+          "fields": []
+        }
+      }
+    },
+    {
+      "id": "cer-optional-present",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "Both OPTIONAL components present",
+      "rule": "X.690 9.1, 8.9.2",
+      "type": "OptionalPair",
+      "wire": "30 80 80 01 ff 81 01 05 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cer-default-omitted",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "DEFAULT component with its default value omitted",
+      "rule": "X.690 11.5: a DEFAULT value is not encoded",
+      "type": "DefaultFlag",
+      "wire": "30 80 02 01 05 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "flag",
+              "value": {
+                "kind": "boolean",
+                "value": false
+              }
+            },
+            {
+              "name": "count",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            }
+          ]
+        }
+      },
+      "limitations": {
+        "opentlv.encode": "OpenTLV Lua binds no ASN.1 schema layer for CER, so the Lua Tree Writer writes the DEFAULT component it is given instead of omitting it (X.690 11.5)"
+      }
+    },
+    {
+      "id": "cer-sequence-of-empty",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "Empty SEQUENCE OF",
+      "rule": "X.690 9.1, 8.10",
+      "type": "NumberList",
+      "wire": "30 80 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "sequence_of",
+          "items": []
+        }
+      }
+    },
+    {
+      "id": "cer-set",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "SET components in tag order",
+      "rule": "X.690 9.3: canonical tag order",
+      "type": "TaggedSet",
+      "wire": "31 80 80 01 05 81 01 ff 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "set",
+          "fields": [
+            {
+              "name": "first",
+              "value": {
+                "kind": "integer",
+                "value": "5"
+              }
+            },
+            {
+              "name": "second",
+              "value": {
+                "kind": "boolean",
+                "value": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cer-set-of",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "SET OF items in ascending encoding order",
+      "rule": "X.690 11.6: items ordered as octet strings, the shorter padded with zeros",
+      "type": "NumberSet",
+      "wire": "31 80 02 01 05 02 02 01 00 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "set_of",
+          "items": [
+            {
+              "kind": "integer",
+              "value": "5"
+            },
+            {
+              "kind": "integer",
+              "value": "256"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cer-choice-number",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "CHOICE of INTEGER",
+      "rule": "X.690 8.13",
+      "type": "Alternative",
+      "wire": "02 01 05",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "choice",
+          "alternative": "number",
+          "value": {
+            "kind": "integer",
+            "value": "5"
+          }
+        }
+      }
+    },
+    {
+      "id": "cer-explicit-tag",
+      "encoding": "cer",
+      "category": "constructed",
+      "description": "Explicit tag 5 with an indefinite length",
+      "rule": "X.690 9.1, 8.14.2",
+      "type": "Explicit5",
+      "wire": "a5 80 02 01 05 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "integer",
+          "value": "5"
+        }
+      },
+      "limitations": {
+        "asn1c.decode": "asn1c rejects an indefinite length on an explicit tag around a primitive type (capability probe ber-explicit-indefinite-primitive)"
+      }
+    },
+    {
+      "id": "cer-nested",
+      "encoding": "cer",
+      "category": "nested",
+      "description": "Three levels of indefinite lengths",
+      "rule": "X.690 9.1, 8.1.5",
+      "type": "Nested",
+      "wire": "30 80 04 01 41 30 80 30 80 01 01 ff 02 01 05 00 00 00 00 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": "41"
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "5"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cer-nested-two-pairs",
+      "encoding": "cer",
+      "category": "nested",
+      "description": "Two pairs in a nested SEQUENCE OF",
+      "rule": "X.690 9.1",
+      "type": "Nested",
+      "wire": "30 80 04 00 30 80 30 80 01 01 00 02 01 01 00 00 30 80 01 01 ff 02 01 02 00 00 00 00 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "sequence",
+          "fields": [
+            {
+              "name": "name",
+              "value": {
+                "kind": "octet_string",
+                "value": ""
+              }
+            },
+            {
+              "name": "pairs",
+              "value": {
+                "kind": "sequence_of",
+                "items": [
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": false
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "1"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "sequence",
+                    "fields": [
+                      {
+                        "name": "flag",
+                        "value": {
+                          "kind": "boolean",
+                          "value": true
+                        }
+                      },
+                      {
+                        "name": "count",
+                        "value": {
+                          "kind": "integer",
+                          "value": "2"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cer-implicit-tag-30",
+      "encoding": "cer",
+      "category": "tag-boundary",
+      "description": "Context tag 30",
+      "rule": "X.690 8.1.2.2",
+      "type": "Implicit30",
+      "wire": "9e 01 41",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      }
+    },
+    {
+      "id": "cer-high-tag-31",
+      "encoding": "cer",
+      "category": "tag-boundary",
+      "description": "Tag 31",
+      "rule": "X.690 8.1.2.4",
+      "type": "HighTag31",
+      "wire": "9f 1f 01 41",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      }
+    },
+    {
+      "id": "cer-high-tag-200",
+      "encoding": "cer",
+      "category": "tag-boundary",
+      "description": "Tag 200",
+      "rule": "X.690 8.1.2.4",
+      "type": "HighTag200",
+      "wire": "9f 81 48 01 41",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      }
+    },
+    {
+      "id": "cer-application-class",
+      "encoding": "cer",
+      "category": "tag-boundary",
+      "description": "APPLICATION 1 INTEGER",
+      "rule": "X.690 8.1.2.2",
+      "type": "Application1",
+      "wire": "41 01 05",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "integer",
+          "value": "5"
+        }
+      }
+    },
+    {
+      "id": "cer-private-class",
+      "encoding": "cer",
+      "category": "tag-boundary",
+      "description": "PRIVATE 2 OCTET STRING",
+      "rule": "X.690 8.1.2.2",
+      "type": "Private2",
+      "wire": "c2 01 41",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "41"
+        }
+      }
+    },
+    {
+      "id": "cer-length-127",
+      "encoding": "cer",
+      "category": "length-boundary",
+      "description": "Length 127, the last short form",
+      "rule": "X.690 9.1, 8.1.3.4: the fewest length octets",
+      "type": "Octets",
+      "wire": "04 7f 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "41414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        }
+      }
+    },
+    {
+      "id": "cer-length-128",
+      "encoding": "cer",
+      "category": "length-boundary",
+      "description": "Length 128, the first long form",
+      "rule": "X.690 9.1, 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 81 80 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        }
+      }
+    },
+    {
+      "id": "cer-length-256",
+      "encoding": "cer",
+      "category": "length-boundary",
+      "description": "Length 256 in two length octets",
+      "rule": "X.690 9.1, 8.1.3.5",
+      "type": "Octets",
+      "wire": "04 82 01 00 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "41414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        }
+      }
+    },
+    {
+      "id": "cer-octets-1000",
+      "encoding": "cer",
+      "category": "length-boundary",
+      "description": "1000-octet OCTET STRING, the longest primitive string",
+      "rule": "X.690 9.2: at most 1000 contents octets are primitive",
+      "type": "Octets",
+      "wire": "04 82 03 e8 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "41414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141"
+        }
+      }
+    },
+    {
+      "id": "cer-bits-999",
+      "encoding": "cer",
+      "category": "length-boundary",
+      "description": "BIT STRING of 1000 contents octets, the longest primitive one",
+      "rule": "X.690 9.2: the initial octet counts as a contents octet",
+      "type": "Bits",
+      "wire": "03 82 03 e8 00 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 0,
+          "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "id": "cer-octets-1001",
+      "encoding": "cer",
+      "category": "segmented",
+      "description": "1001-octet OCTET STRING in two segments",
+      "rule": "X.690 9.2: 1000-octet primitive segments, the last shorter",
+      "type": "Octets",
+      "wire": "24 80 04 82 03 e8 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 04 01 42 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414142"
+        }
+      },
+      "limitations": {
+        "opentlv.encode": "the Lua Tree Writer writes a string of any length in primitive form; Core's tlv_cer_write_segmented_string() in cer_validation.h is not bound (opentlv-lua api-coverage.md)"
+      }
+    },
+    {
+      "id": "cer-octets-2000",
+      "encoding": "cer",
+      "category": "segmented",
+      "description": "2000-octet OCTET STRING in two full segments",
+      "rule": "X.690 9.2: no empty final segment is needed",
+      "type": "Octets",
+      "wire": "24 80 04 82 03 e8 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 04 82 03 e8 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414142424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242424242"
+        }
+      },
+      "limitations": {
+        "opentlv.encode": "the Lua Tree Writer writes a string of any length in primitive form; Core's tlv_cer_write_segmented_string() in cer_validation.h is not bound (opentlv-lua api-coverage.md)"
+      }
+    },
+    {
+      "id": "cer-ia5-1001",
+      "encoding": "cer",
+      "category": "segmented",
+      "description": "1001-character IA5String in OCTET STRING segments",
+      "rule": "X.690 9.2, 8.23.5",
+      "type": "Text",
+      "wire": "36 80 04 82 03 e8 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 04 01 42 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "ia5string",
+          "value": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414142"
+        }
+      },
+      "limitations": {
+        "opentlv.encode": "the Lua Tree Writer writes a string of any length in primitive form; Core's tlv_cer_write_segmented_string() in cer_validation.h is not bound (opentlv-lua api-coverage.md)",
+        "asn1c.decode": "asn1c requires every segment to repeat the string type's own tag, so it rejects the OCTET STRING segments X.690 prescribes (capability probe ber-constructed-ia5-octet-segments)"
+      }
+    },
+    {
+      "id": "cer-bits-1000",
+      "encoding": "cer",
+      "category": "segmented",
+      "description": "BIT STRING of 1000 bit octets in two segments",
+      "rule": "X.690 9.2, 8.6.4: each full segment holds the initial octet and 999 bit octets",
+      "type": "Bits",
+      "wire": "23 80 03 82 03 e8 00 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa 03 02 00 bb 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "bit_string",
+          "unused_bits": 0,
+          "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabb"
+        }
+      },
+      "limitations": {
+        "opentlv.encode": "the Lua Tree Writer writes a string of any length in primitive form; Core's tlv_cer_write_segmented_string() in cer_validation.h is not bound (opentlv-lua api-coverage.md)"
+      }
+    },
+    {
+      "id": "cer-private-1001",
+      "encoding": "cer",
+      "category": "segmented",
+      "description": "1001-octet PRIVATE 2 OCTET STRING in two segments",
+      "rule": "X.690 9.2, 8.14.3",
+      "type": "Private2",
+      "wire": "e2 80 04 82 03 e8 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 04 01 42 00 00",
+      "expected": {
+        "result": "canonical",
+        "value": {
+          "kind": "octet_string",
+          "value": "4141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414141414142"
+        }
+      },
+      "limitations": {
+        "opentlv.encode": "the Lua Tree Writer writes a string of any length in primitive form; Core's tlv_cer_write_segmented_string() in cer_validation.h is not bound (opentlv-lua api-coverage.md)",
+        "asn1c.decode": "asn1c requires every segment to repeat the implicit tag, so it rejects the OCTET STRING segments X.690 prescribes (capability probe ber-constructed-implicit-octet-segments)"
+      }
+    },
+    {
+      "id": "cer-definite-sequence",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "SEQUENCE with a definite length",
+      "rule": "X.690 9.1: a constructed encoding uses the indefinite form",
+      "type": "Pair",
+      "wire": "30 06 01 01 ff 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "cer-definite-inner-sequence-of",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "Indefinite SEQUENCE with a definite SEQUENCE OF",
+      "rule": "X.690 9.1",
+      "type": "Nested",
+      "wire": "30 80 04 01 41 30 08 30 06 01 01 ff 02 01 05 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "cer-definite-explicit-tag",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "Explicit tag 5 with a definite length",
+      "rule": "X.690 9.1",
+      "type": "Explicit5",
+      "wire": "a5 03 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "cer-length-long-form-for-3",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "Long form for length 3",
+      "rule": "X.690 9.1: the fewest length octets",
+      "type": "Octets",
+      "wire": "04 81 03 41 42 43",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:length-nonminimal-one-octet"
+    },
+    {
+      "id": "cer-length-leading-zero",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "Long-form length with a leading zero octet",
+      "rule": "X.690 9.1",
+      "type": "Octets",
+      "wire": "04 82 00 03 41 42 43",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:length-nonminimal-two-octets"
+    },
+    {
+      "id": "cer-boolean-true-01",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "TRUE encoded as 01",
+      "rule": "X.690 11.1: TRUE is ff",
+      "type": "Flag",
+      "wire": "01 01 01",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:boolean-noncanonical"
+    },
+    {
+      "id": "cer-bit-string-padding",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "BIT STRING with set unused bits",
+      "rule": "X.690 11.2.1: unused bits are zero",
+      "type": "Bits",
+      "wire": "03 02 05 a1",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:bit-string-padding"
+    },
+    {
+      "id": "cer-constructed-short-string",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "Constructed OCTET STRING of one octet",
+      "rule": "X.690 9.2: at most 1000 contents octets are primitive",
+      "type": "Octets",
+      "wire": "24 80 04 01 41 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds Core's CER Format but not cer_validation.h: cer.h checks one element's identifier and length, not string segmentation (X.690 9.2)"
+      }
+    },
+    {
+      "id": "cer-primitive-1001",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "1001-octet OCTET STRING in primitive form",
+      "rule": "X.690 9.2: more than 1000 contents octets are segmented",
+      "type": "Octets",
+      "wire": "04 82 03 e9 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds Core's CER Format but not cer_validation.h: cer.h checks one element's identifier and length, not string segmentation (X.690 9.2)"
+      }
+    },
+    {
+      "id": "cer-short-first-segment",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "Segmented string whose first segment has 999 octets",
+      "rule": "X.690 9.2: each segment but the last has 1000 octets",
+      "type": "Octets",
+      "wire": "24 80 04 82 03 e7 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 04 02 42 42 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds Core's CER Format but not cer_validation.h: cer.h checks one element's identifier and length, not string segmentation (X.690 9.2)"
+      }
+    },
+    {
+      "id": "cer-constructed-segment",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "Segmented string with a constructed segment",
+      "rule": "X.690 9.2: segments are primitive",
+      "type": "Octets",
+      "wire": "24 80 24 80 04 82 03 e8 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 00 00 04 01 42 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds Core's CER Format but not cer_validation.h: cer.h checks one element's identifier and length, not string segmentation (X.690 9.2)"
+      }
+    },
+    {
+      "id": "cer-default-encoded",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "DEFAULT component encoded with its default value",
+      "rule": "X.690 11.5",
+      "type": "DefaultFlag",
+      "wire": "30 80 01 01 00 02 01 05 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer for CER: cer.h validates framing and the codecs primitive contents, not DEFAULT omission (X.690 11.5) or SET (9.3) and SET OF (11.6) order"
+      }
+    },
+    {
+      "id": "cer-set-unsorted",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "SET components in reverse tag order",
+      "rule": "X.690 9.3",
+      "type": "TaggedSet",
+      "wire": "31 80 81 01 ff 80 01 05 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer for CER: cer.h validates framing and the codecs primitive contents, not DEFAULT omission (X.690 11.5) or SET (9.3) and SET OF (11.6) order"
+      }
+    },
+    {
+      "id": "cer-set-of-unsorted",
+      "encoding": "cer",
+      "category": "noncanonical",
+      "description": "SET OF items in descending order",
+      "rule": "X.690 11.6",
+      "type": "NumberSet",
+      "wire": "31 80 02 01 02 02 01 01 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "limitations": {
+        "opentlv.decode": "OpenTLV Lua binds no ASN.1 schema layer for CER: cer.h validates framing and the codecs primitive contents, not DEFAULT omission (X.690 11.5) or SET (9.3) and SET OF (11.6) order"
+      }
+    },
+    {
+      "id": "cer-high-tag-form-for-4",
+      "encoding": "cer",
+      "category": "malformed",
+      "description": "Universal tag 4 in high-tag-number form",
+      "rule": "X.690 8.1.2.2: numbers 0 to 30 use one identifier octet",
+      "type": "Octets",
+      "wire": "1f 04 01 41",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "not_comparable": {
+        "asn1c.decode": "asn1c accepts the high-tag-number form for a tag number below 31 (capability probe ber-high-tag-form-for-low-number)"
+      }
+    },
+    {
+      "id": "cer-indefinite-primitive",
+      "encoding": "cer",
+      "category": "malformed",
+      "description": "Indefinite length on a primitive OCTET STRING",
+      "rule": "X.690 8.1.3.2 a",
+      "type": "Octets",
+      "wire": "04 80 41 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "not_comparable": {
+        "asn1c.decode": "asn1c reads 04 80 as a complete empty value, so the error surfaces as trailing input (capability probe ber-primitive-indefinite)"
+      }
+    },
+    {
+      "id": "cer-eoc-nonzero-length",
+      "encoding": "cer",
+      "category": "end-of-contents",
+      "description": "End-of-contents with a length octet 01",
+      "rule": "X.690 8.1.5",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05 00 01 00 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      }
+    },
+    {
+      "id": "cer-length-reserved",
+      "encoding": "cer",
+      "category": "malformed",
+      "description": "Reserved length octet ff",
+      "rule": "X.690 8.1.3.5 c",
+      "type": "Octets",
+      "wire": "04 ff",
+      "expected": {
+        "result": "reject",
+        "error": "invalid"
+      },
+      "origin": "asn1-ber:length-reserved-ff"
+    },
+    {
+      "id": "cer-empty-input",
+      "encoding": "cer",
+      "category": "truncated",
+      "description": "No input",
+      "rule": "X.690 8.1.1",
+      "type": "Octets",
+      "wire": "",
+      "expected": {
+        "result": "reject",
+        "error": "empty"
+      }
+    },
+    {
+      "id": "cer-missing-eoc",
+      "encoding": "cer",
+      "category": "truncated",
+      "description": "SEQUENCE without its end-of-contents",
+      "rule": "X.690 8.1.3.6.1",
+      "type": "Pair",
+      "wire": "30 80 01 01 ff 02 01 05",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      }
+    },
+    {
+      "id": "cer-nested-missing-eoc",
+      "encoding": "cer",
+      "category": "truncated",
+      "description": "Nested value missing its outermost end-of-contents",
+      "rule": "X.690 8.1.3.6.1",
+      "type": "Nested",
+      "wire": "30 80 04 01 41 30 80 30 80 01 01 ff 02 01 05 00 00 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      }
+    },
+    {
+      "id": "cer-segment-truncated",
+      "encoding": "cer",
+      "category": "truncated",
+      "description": "Segmented string ending inside its first segment",
+      "rule": "X.690 9.2",
+      "type": "Octets",
+      "wire": "24 80 04 82 03 e8 41 41 41 41 41 41 41 41 41 41",
+      "expected": {
+        "result": "reject",
+        "error": "truncated"
+      }
+    },
+    {
+      "id": "cer-trailing-after-eoc",
+      "encoding": "cer",
+      "category": "truncated",
+      "description": "An octet after the end-of-contents",
+      "rule": "TestLab input policy: exactly one complete value",
+      "type": "NumberList",
+      "wire": "30 80 00 00 00",
+      "expected": {
+        "result": "reject",
+        "error": "trailing"
+      }
+    }
+  ]
+}

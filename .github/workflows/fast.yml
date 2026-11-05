@@ -166,3 +166,59 @@ jobs:
             build/asn1c-runs/*/provenance.json
             build/asn1c-runs/*/failure.json
           if-no-files-found: warn
+
+  ber-cer-differential:
+    name: BER and CER differential against asn1c
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install Lua and C toolchains
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y lua5.2 liblua5.2-dev luarocks cmake build-essential git unzip zip
+      - name: Identify external caches
+        id: keys
+        run: |
+          echo "lua=$(python3 scripts/setup_lua.py --print-cache-key --lua lua5.2)" >> "$GITHUB_OUTPUT"
+          echo "asn1c=$(python3 scripts/setup_asn1c.py --print-cache-key)" >> "$GITHUB_OUTPUT"
+      - name: Restore exact lua-asn1 cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: build/dependency-cache/${{ steps.keys.outputs.lua }}
+          key: ${{ steps.keys.outputs.lua }}
+      - name: Restore exact asn1c cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: build/dependency-cache/${{ steps.keys.outputs.asn1c }}
+          key: ${{ steps.keys.outputs.asn1c }}
+      - name: Freshly install OpenTLV Lua
+        run: python3 scripts/setup_lua.py --lua lua5.2
+      - name: Build and audit the asn1c reference adapter
+        run: python3 scripts/setup_asn1c.py
+      - name: Compare OpenTLV and asn1c on the BER and CER corpus
+        run: >-
+          python3 scripts/run_ber_cer_differential.py
+          --output build/ber-cer-reports/ber-cer-interop.json --report build/ber-cer-reports/ber-cer-interop.md
+      - name: Confirm a real library difference yields a reproducible mismatch report
+        run: |
+          status=0
+          python3 scripts/run_ber_cer_differential.py --fixtures tests/fixtures/ber_cer_mismatch.json \
+            --output build/ber-cer-reports/mismatch-probe.json \
+            --report build/ber-cer-reports/mismatch-probe.md || status=$?
+          test "$status" -eq 3
+          python3 scripts/check_report.py build/ber-cer-reports/mismatch-probe.json
+      - name: Upload BER and CER reports and setup receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ber-cer-differential-reports
+          path: |
+            build/ber-cer-reports/
+            build/dependency-runs/*/provenance.json
+            build/dependency-runs/*/failure.json
+            build/asn1c-runs/*/provenance.json
+            build/asn1c-runs/*/failure.json
+          if-no-files-found: warn

@@ -20,6 +20,20 @@
 
 ### Added
 
+- BER and CER differential: `scripts/run_ber_cer_differential.py` decodes and encodes 154
+  hand-written fixtures, 99 BER and 55 CER, with OpenTLV Lua v0.3.0 and the asn1c reference, and
+  judges each library against X.690. A new independent reference, `scripts/x690.py`, validates
+  every fixture and reads BER encoders' output by logical value, so BER bytes are never required to
+  match. CER is compared byte for byte for one type and value. Fixtures cover high tags, definite,
+  indefinite and alternative lengths, end-of-contents, constructed, nested and segmented strings,
+  alternate BER forms, CER canonical forms and segmentation, truncation and malformed input, and 62
+  reuse the bytes of the #1 and #21 corpora. Each check is classified as pass, mismatch,
+  confirmed, limitation, not comparable or inconclusive, with cited reasons, and reports give
+  per-encoding coverage with denominators. No OpenTLV defect was found. Six new asn1c capability
+  probes record its constructed-string, explicit-tag, BIT STRING and OBJECT IDENTIFIER
+  deviations. A separate Fast job runs the corpus and a deliberate mismatch probe, `check_report.py`
+  reruns its reports, and `docs/ber-cer-differential.md` documents the checks, corpus, results and
+  limits. (#22)
 - DER canonical differential: `scripts/run_der_differential.py` decodes and encodes 98
   hand-written fixtures with OpenTLV Lua v0.3.0 and the asn1c reference, and judges each library
   against X.690 instead of trusting either. Fixtures cover high tag numbers, short and long length

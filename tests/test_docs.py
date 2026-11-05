@@ -7,7 +7,7 @@ import re
 import shlex
 import unittest
 
-from scripts import run_der_differential as der, run_differential as differential
+from scripts import run_ber_cer_differential as interop, run_der_differential as der, run_differential as differential
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
@@ -64,14 +64,15 @@ class DocumentationTests(unittest.TestCase):
                     for argument in arguments:
                         if argument.startswith("--"):
                             self.assertIn(f'"{argument}"', source)
-                    runner = der if script == "scripts/run_der_differential.py" else differential
-                    if "--fixtures" in arguments or runner is der:
+                    runner = {"scripts/run_der_differential.py": der,
+                              "scripts/run_ber_cer_differential.py": interop}.get(script, differential)
+                    if "--fixtures" in arguments or runner is not differential:
                         corpus = runner.DEFAULT_FIXTURES
                         if "--fixtures" in arguments:
                             corpus = ROOT / arguments[arguments.index("--fixtures") + 1]
                         identifiers = {fixture["id"] for fixture in runner.load_corpus(corpus)["fixtures"]}
                         # The BER guide's "Add a fixture" command names an entry a contributor has yet to add.
-                        if (page == README or runner is der) and "--fixture" in arguments:
+                        if (page == README or runner is not differential) and "--fixture" in arguments:
                             self.assertIn(arguments[arguments.index("--fixture") + 1], identifiers)
         self.assertEqual(seen, {path.relative_to(ROOT).as_posix() for path in (ROOT / "scripts").glob("*.py")})
 
@@ -114,3 +115,34 @@ class DocumentationTests(unittest.TestCase):
         for category in der.CATEGORIES:
             count = sum(fixture["category"] == category for fixture in fixtures)
             self.assertRegex(text, rf"\| `{category}` \| {count} \|")
+
+    def test_ber_cer_fixture_example_is_valid(self):
+        text = (ROOT / "docs/ber-cer-differential.md").read_text(encoding="utf-8")
+        section = text.split("### Add a fixture", 1)[1].split("\n## ", 1)[0]
+        example = json.loads(re.search(r"```json\n(.*?)```", section, re.S).group(1))
+        interop.validate_fixture(example, der.load_types())
+        corpus = interop.load_corpus(interop.DEFAULT_FIXTURES)
+        self.assertNotIn(example["id"], {fixture["id"] for fixture in corpus["fixtures"]})
+
+    def test_ber_cer_guide_states_the_committed_corpus_and_its_coverage(self):
+        text = " ".join((ROOT / "docs/ber-cer-differential.md").read_text(encoding="utf-8").split("\n"))
+        types = der.load_types()
+        fixtures = interop.load_corpus(interop.DEFAULT_FIXTURES, types)["fixtures"]
+        ber, cer = ([f["expected"]["result"] for f in fixtures if f["encoding"] == encoding]
+                    for encoding in interop.ENCODINGS)
+        self.assertIn(f"holds {len(fixtures)} fixtures: {len(ber)} BER ({ber.count('accept')} accept and "
+                      f"{ber.count('reject')} rejections) and {len(cer)} CER ({cer.count('canonical')} canonical and "
+                      f"{cer.count('reject')} rejections). {sum(bool(f.get('limitations')) for f in fixtures)} "
+                      f"declare a limitation and {sum(bool(f.get('not_comparable')) for f in fixtures)} a "
+                      "not-comparable library.", text)
+        self.assertIn(f"{len(fixtures)} pass, 0 mismatch, 0 confirmed of {len(fixtures)} fixtures", text)
+        applies = judged = 0
+        for encoding, checks in interop.denominators(fixtures, types).items():
+            for name, counts in checks.items():
+                self.assertIn(f"| {encoding.upper()} | `{name}` | {counts['applies']} | {counts['judged']} |", text)
+                applies, judged = applies + counts["applies"], judged + counts["judged"]
+        self.assertIn(f"Of {applies} checks, {judged} ({interop.percent(judged, applies)}%) are judged.", text)
+        for category in interop.CATEGORIES:
+            self.assertRegex(text, rf"\| `{category}` \| {sum(f['category'] == category for f in fixtures)} \|")
+        reused = sum(f.get("origin", "").startswith("asn1-ber:") for f in fixtures)
+        self.assertIn(f"{reused} name an `origin`", text)
