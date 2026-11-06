@@ -123,8 +123,9 @@ A failed run replaces the output report and records the active fixture and compl
 
 The standards runner remains nonzero while the reviewed corpus exposes shared differences. The
 separate CI regression gate below checks the explicitly recorded reference behavior. It preserves
-the standards verdict, fixture classifications, expectations and agreement denominator. Follow-up
-reporting and cross-repository actions remain in #32 under the normal review/disclosure process.
+the standards verdict, fixture classifications, expectations and agreement denominator. The
+[coverage, triage and ergonomics report](rust-report.md) classifies each difference and links its
+upstream issue.
 
 ### Explicit reference divergence baseline
 

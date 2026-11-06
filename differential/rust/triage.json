@@ -1,0 +1,210 @@
+{
+  "schema": 1,
+  "contract": "rust-ber-der-1",
+  "reviewed": "2026-11-06",
+  "classifications": {
+    "defect": "A participant contradicts a cited X.690 rule on the reviewed bytes, and its documentation does not declare the behavior.",
+    "limitation": "A documented or deliberate behavior, a missing operation or a missing public API. Never counted as a defect.",
+    "inconclusive": "The available evidence cannot fairly decide the rule for at least one participant."
+  },
+  "findings": [
+    {
+      "id": "reference-nonminimal-identifier",
+      "classification": "defect",
+      "participants": ["der-parser"],
+      "owner": "rusticata/asn1-rs",
+      "component": "asn1-rs 0.7.2 src/ber/parser.rs::parse_identifier",
+      "summary": "The reference accepts a high-tag identifier whose first subsequent octet is 80, and accepts the high-tag form for tag numbers below 31, in BER and DER.",
+      "rules": ["X.690 8.1.2.2", "X.690 8.1.2.4.2 c"],
+      "fixtures": ["ber-high-tag-leading-80", "der-high-tag-form-for-30"],
+      "minimized": [
+        {"encoding": "ber", "wire": "1f 80 1f 00", "observed": {"core": "reject:invalid", "rust-binding": "reject:invalid", "der-parser": "accept"}},
+        {"encoding": "der", "wire": "1f 1e 00", "observed": {"core": "reject:invalid", "rust-binding": "reject:invalid", "der-parser": "accept"}}
+      ],
+      "upstream": {"issue": "https://github.com/rusticata/asn1-rs/issues/149", "state": "open", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Already public upstream. asn1-rs #149, filed by a third party on 2026-09-21, lists the same four header cases. Upstream publishes no private reporting channel. TestLab holds no private finding about it."
+    },
+    {
+      "id": "reference-nonminimal-der-length",
+      "classification": "defect",
+      "participants": ["der-parser"],
+      "owner": "rusticata/asn1-rs",
+      "component": "asn1-rs 0.7.2 src/header.rs::FromDer::from_der",
+      "summary": "The reference DER path accepts a long-form length below 128 and a long-form length with a leading zero octet.",
+      "rules": ["X.690 10.1"],
+      "fixtures": ["der-length-long-form-for-1", "der-length-leading-zero"],
+      "minimized": [
+        {"encoding": "der", "wire": "05 81 00", "observed": {"core": "reject:invalid", "rust-binding": "reject:invalid", "der-parser": "accept"}}
+      ],
+      "upstream": {"issue": "https://github.com/rusticata/asn1-rs/issues/149", "state": "open", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Already public upstream in asn1-rs #149. The pinned source keeps the short-form check commented out. TestLab holds no private finding about it."
+    },
+    {
+      "id": "reference-truncated-identifier-category",
+      "classification": "limitation",
+      "participants": ["der-parser"],
+      "owner": "rusticata/asn1-rs",
+      "component": "asn1-rs 0.7.2 src/ber/parser.rs::parse_identifier",
+      "summary": "Every participant rejects an identifier that ends early. The reference reports InvalidTag rather than Incomplete, so TestLab normalizes its error to invalid, not truncated.",
+      "rules": ["X.690 8.1.2.4.2"],
+      "fixtures": ["ber-high-tag-unterminated", "der-truncated-identifier"],
+      "minimized": [
+        {"encoding": "ber", "wire": "1f", "observed": {"core": "reject:truncated", "rust-binding": "reject:truncated", "der-parser": "reject:invalid"}}
+      ],
+      "upstream": {"issue": null, "state": "not-reported", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Not reported. X.690 defines no error categories and the input is rejected, so this is a diagnostic difference, not a conformance defect."
+    },
+    {
+      "id": "core-ber-high-form-low-tag",
+      "classification": "limitation",
+      "participants": ["core", "rust-binding"],
+      "owner": "OpenTLV/opentlv",
+      "component": "Core v0.8.0 tlv/include/tlv/builtins/asn1/ber.h, tlv_format_ber",
+      "summary": "Found while minimizing reference-nonminimal-identifier. The BER format accepts the high-tag form for tag numbers below 31, and so does the binding that delegates to it. Core documents this: \"For raw-tag compatibility, high-tag-number encodings of numbers below 31 remain accepted.\" DER rejects it.",
+      "rules": ["X.690 8.1.2.2"],
+      "fixtures": [],
+      "minimized": [
+        {"encoding": "ber", "wire": "1f 1e 00", "observed": {"core": "accept", "rust-binding": "accept", "der-parser": "accept"}}
+      ],
+      "upstream": {"issue": null, "state": "documented", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Documented, deliberate Core behavior. It is not in the reviewed corpus, and adding a fixture would be a separate, reviewed corpus change."
+    },
+    {
+      "id": "reference-nested-der-contents",
+      "classification": "limitation",
+      "participants": ["der-parser"],
+      "owner": "rusticata/der-parser",
+      "component": "der-parser 10.0.0 src/der/parser.rs::parse_der_recursive",
+      "summary": "Generic parse_der checks DER contents only at the root. SEQUENCE and SET children go through the BER path, so a nested BOOLEAN 01 is accepted. The corpus keeps this case inconclusive, and the capability probe der_generic_recursion_does_not_validate_nested_boolean records the behavior.",
+      "rules": ["X.690 11.1"],
+      "fixtures": ["der-nested-boolean-true-01"],
+      "minimized": [
+        {"encoding": "der", "wire": "30 03 01 01 01", "observed": {"core": "reject:invalid", "rust-binding": "reject:invalid", "der-parser": "accept"}}
+      ],
+      "upstream": {"issue": "https://github.com/rusticata/der-parser/issues/95", "state": "open", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Already public upstream. der-parser #95 was filed by a third party on 2026-09-21."
+    },
+    {
+      "id": "reference-eoc-objects",
+      "classification": "inconclusive",
+      "participants": ["der-parser"],
+      "owner": "rusticata/der-parser",
+      "component": "der-parser 10.0.0 BerObjectContent::EndOfContent",
+      "summary": "The reference returns end-of-contents as an object at the root and inside a definite value. Deciding whether that is library acceptance needs an explicit adapter check. Core and the binding reject both inputs.",
+      "rules": ["X.690 8.1.5"],
+      "fixtures": ["ber-eoc-root", "ber-eoc-in-definite"],
+      "minimized": [
+        {"encoding": "ber", "wire": "00 00", "observed": {"core": "reject:invalid", "rust-binding": "reject:invalid", "der-parser": "accept"}}
+      ],
+      "upstream": {"issue": null, "state": "not-reported", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Not reported. The library exposes the object deliberately, and attributing the acceptance needs the adapter check first."
+    },
+    {
+      "id": "schema-rules-not-exercised",
+      "classification": "inconclusive",
+      "participants": ["core", "rust-binding", "der-parser"],
+      "owner": "OpenTLV/opentlv-testlab",
+      "component": "Generic DER read paths of all three participants",
+      "summary": "DEFAULT omission and SET OF order need an ASN.1 schema. All three generic paths accept these inputs. Core's separate DER schema engine is not exercised by this runner, the published binding does not expose it (Rust #52), and the reference has no equivalent.",
+      "rules": ["X.690 11.5", "X.690 11.6"],
+      "fixtures": ["der-default-encoded", "der-set-of-unsorted"],
+      "minimized": [],
+      "upstream": {"issue": "https://github.com/OpenTLV/opentlv-rust/issues/52", "state": "open", "checked": "2026-11-06", "filed_by_testlab": true},
+      "disclosure": "Not a defect of any participant. Rust #52 tracks the binding side."
+    },
+    {
+      "id": "constructed-string-representation",
+      "classification": "inconclusive",
+      "participants": ["der-parser"],
+      "owner": "OpenTLV/opentlv-testlab",
+      "component": "der-parser 10.0.0 OCTET STRING and BIT STRING representations",
+      "summary": "The reference exposes constructed OCTET STRING segments opaquely and rejects a constructed BIT STRING with Unsupported. The comparison contract defines no string reassembly, so the logical value cannot be compared.",
+      "rules": ["X.690 8.6.4", "X.690 8.7.3"],
+      "fixtures": ["ber-constructed-octets", "ber-constructed-bit-string"],
+      "minimized": [],
+      "upstream": {"issue": null, "state": "not-reported", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Not reported. This is a representation difference, not a conformance finding."
+    },
+    {
+      "id": "ber-boolean-typed-validity",
+      "classification": "inconclusive",
+      "participants": ["core", "rust-binding", "der-parser"],
+      "owner": "OpenTLV/opentlv-testlab",
+      "component": "Raw BER framing versus typed BOOLEAN codecs",
+      "summary": "BER allows any nonzero octet for TRUE. Raw framing acceptance cannot decide typed validity, and Core's canonical BOOLEAN codec is deliberately stricter than BER.",
+      "rules": ["X.690 8.2.2"],
+      "fixtures": ["ber-boolean-true-01"],
+      "minimized": [],
+      "upstream": {"issue": null, "state": "not-reported", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Not reported."
+    },
+    {
+      "id": "wide-length-envelope",
+      "classification": "inconclusive",
+      "participants": ["core", "rust-binding", "der-parser"],
+      "owner": "OpenTLV/opentlv-testlab",
+      "component": "Native length widths",
+      "summary": "A legal nine-octet BER length lies outside the audited native-width intersection. No overflow equivalence between the participants is assumed.",
+      "rules": ["X.690 8.1.3.5"],
+      "fixtures": ["ber-length-nine-octets"],
+      "minimized": [],
+      "upstream": {"issue": null, "state": "not-reported", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Not reported."
+    },
+    {
+      "id": "reference-opaque-constructed",
+      "classification": "limitation",
+      "participants": ["der-parser"],
+      "owner": "rusticata/der-parser",
+      "component": "der-parser 10.0.0 BerObjectContent::Unknown",
+      "summary": "The generic reference returns application, context and private constructed contents as opaque Unknown objects, so the adapter cannot produce a complete child tree.",
+      "rules": ["X.690 8.1.2.2", "X.690 8.14.2"],
+      "fixtures": ["ber-private-class-indefinite", "der-explicit-context"],
+      "minimized": [],
+      "upstream": {"issue": null, "state": "documented", "checked": "2026-11-06", "filed_by_testlab": false},
+      "disclosure": "Documented API behavior; not reported."
+    },
+    {
+      "id": "rust-asn1-helpers",
+      "classification": "limitation",
+      "participants": ["rust-binding"],
+      "owner": "OpenTLV/opentlv-rust",
+      "component": "Published opentlv 0.2.2 public API",
+      "summary": "Core's standalone ASN.1 identifier, BER length and explicit indefinite-write helpers are not exposed. The adapter decodes tag numbers from Tag::as_bytes instead.",
+      "rules": [],
+      "fixtures": [],
+      "minimized": [],
+      "gap": "asn1-helpers",
+      "upstream": {"issue": "https://github.com/OpenTLV/opentlv-rust/issues/50", "state": "open", "checked": "2026-11-06", "filed_by_testlab": true},
+      "disclosure": "Public API gap, tracked under Rust #46."
+    },
+    {
+      "id": "rust-asn1-codecs",
+      "classification": "limitation",
+      "participants": ["rust-binding"],
+      "owner": "OpenTLV/opentlv-rust",
+      "component": "Published opentlv 0.2.2 public API",
+      "summary": "Core's typed ASN.1 value codecs are not exposed. Strict DER validation works, but it returns raw bytes only.",
+      "rules": [],
+      "fixtures": [],
+      "minimized": [],
+      "gap": "asn1-codecs",
+      "upstream": {"issue": "https://github.com/OpenTLV/opentlv-rust/issues/51", "state": "open", "checked": "2026-11-06", "filed_by_testlab": true},
+      "disclosure": "Public API gap, tracked under Rust #46."
+    },
+    {
+      "id": "rust-der-schema",
+      "classification": "limitation",
+      "participants": ["rust-binding"],
+      "owner": "OpenTLV/opentlv-rust",
+      "component": "Published opentlv 0.2.2 public API",
+      "summary": "Core's schema-aware DER validation and encoding engine is not exposed.",
+      "rules": [],
+      "fixtures": [],
+      "minimized": [],
+      "gap": "der-schema",
+      "upstream": {"issue": "https://github.com/OpenTLV/opentlv-rust/issues/52", "state": "open", "checked": "2026-11-06", "filed_by_testlab": true},
+      "disclosure": "Public API gap, tracked under Rust #46."
+    }
+  ]
+}

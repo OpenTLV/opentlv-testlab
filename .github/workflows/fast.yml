@@ -52,6 +52,8 @@ jobs:
         run: python3 scripts/check_rust_differential.py
       - name: Compare the complete corpus and require exact reference divergence observations
         run: python3 scripts/check_rust_regressions.py
+      - name: Build the coverage, triage and ergonomics report and rerun minimized cases
+        run: python3 scripts/report_rust_differential.py --comparison build/rust-reports/comparison.json --reproduce
       - name: Upload reviewed-corpus reports, provenance and build logs
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
