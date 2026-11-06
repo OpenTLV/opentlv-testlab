@@ -26,6 +26,7 @@ binding repository.
 | [Rust reference baseline](docs/rust-reference.md) | Exact der-parser pin, dependency provenance, BER/DER capability intersection, reviewed fixtures and normalized observation contract |
 | [Published Rust binding audit](docs/rust-binding.md) | Public API capability/gap matrix, published 0.2.2 provenance and linked Rust fixes |
 | [Rust differential runner](docs/rust-differential.md) | Core/Rust/der-parser execution, fresh release setup, bounded adapters, reproducible reports and CI failure gates |
+| [Rust coverage, triage and ergonomics report](docs/rust-report.md) | Coverage denominators, Bugs section with upstream links, minimized reproductions, ergonomics assessment and epic #19 closure evidence |
 
 ## Reproduce a comparison locally
 
@@ -119,6 +120,7 @@ runtime or timeout fails the command.
 | `python3 scripts/setup_rust_binding.py` | Verify the published Rust package pin without downloading or building |
 | `python3 scripts/check_rust_differential.py` | Verify repeated agreement, mismatch reproduction and setup-failure reports |
 | `python3 scripts/check_rust_regressions.py` | Run the complete corpus and require exact recorded reference divergences; retain the separate standards mismatch report |
+| `python3 scripts/report_rust_differential.py` | Build the Rust coverage, triage and ergonomics report; add `--comparison` and `--reproduce` to check a run and rerun minimized cases |
 
 ## Supported BER subset
 

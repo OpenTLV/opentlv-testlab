@@ -1,0 +1,159 @@
+{
+  "schema": 1,
+  "reviewed": "2026-11-06",
+  "scope": "What a consumer had to write to obtain the normalized BER/DER observations. Findings are anchored in the committed adapters and manifests. There are no scores, and nothing here counts toward functional coverage.",
+  "participants": {
+    "core": {
+      "package": "OpenTLV Core 0.8.0 C API",
+      "adapter": "differential/rust/core/core_adapter.c",
+      "manifest": "differential/rust/core/CMakeLists.txt",
+      "entry_points": ["tlv_format_decode", "tlv_ber_tag_number", "tlv_der_read_strict", "tlv_result_string", "tlv_format_ber", "tlv_format_der"]
+    },
+    "rust-binding": {
+      "package": "opentlv 0.2.2 safe Rust API",
+      "adapter": "differential/rust-binding/src/main.rs",
+      "manifest": "differential/rust-binding/Cargo.toml",
+      "entry_points": ["FormatRef::from", ".decode(", ".layout()", ".encoded()", ".as_bytes()", ".value()", ".read(", "Strictness::Strict", "Limits {"]
+    },
+    "der-parser": {
+      "package": "der-parser 10.0.0",
+      "adapter": "differential/rust/src/main.rs",
+      "manifest": "differential/rust/Cargo.toml",
+      "entry_points": ["parse_ber_recursive", "parse_der_recursive", "BerObjectContent::Sequence", "BerObjectContent::Set", "header.tag()", "header.class()", "header.constructed()", "header.length()"]
+    }
+  },
+  "dimensions": [
+    {
+      "id": "setup",
+      "question": "What does a consumer need before the first parse?",
+      "assessments": {
+        "core": {
+          "finding": "CMake 3.24 or later and a C99 compiler build Core from its release source as a static library, and the adapter links OpenTLV::tlv directly.",
+          "evidence": [
+            {"path": "differential/rust/core/CMakeLists.txt", "contains": "cmake_minimum_required(VERSION 3.24)"},
+            {"path": "differential/rust/core/CMakeLists.txt", "contains": "target_link_libraries(testlab-core PRIVATE OpenTLV::tlv)"}
+          ]
+        },
+        "rust-binding": {
+          "finding": "One exact registry dependency and Rust 1.82. The opentlv-sys build script fetches and builds the Core release itself, so CMake, a C toolchain and network access are still needed.",
+          "evidence": [
+            {"path": "differential/rust-binding/Cargo.toml", "contains": "opentlv = { version = \"=0.2.2\", default-features = false }"},
+            {"path": "differential/rust-binding/Cargo.toml", "contains": "rust-version = \"1.82\""}
+          ]
+        },
+        "der-parser": {
+          "finding": "Pure Rust with no native build step: one direct dependency resolving to 19 locked crates, with Rust 1.78.",
+          "evidence": [
+            {"path": "differential/rust/Cargo.toml", "contains": "der-parser = { version = \"=10.0.0\", default-features = false, features = [\"std\"] }"},
+            {"path": "differential/rust/Cargo.toml", "contains": "rust-version = \"1.78\""}
+          ]
+        }
+      }
+    },
+    {
+      "id": "parse-flow",
+      "question": "How many steps does a complete, validated tree take?",
+      "assessments": {
+        "core": {
+          "finding": "Element at a time: the caller recurses into each constructed value. Strict DER takes a separate tlv_der_read_strict pass before traversal, and a tag number needs its own tlv_ber_tag_number call.",
+          "evidence": [
+            {"path": "differential/rust/core/core_adapter.c", "contains": "result = tlv_format_decode(format, data, size, &decoded, &error);"},
+            {"path": "differential/rust/core/core_adapter.c", "contains": "tlv_der_read_strict(data, size, &limits, &element, &consumed, NULL)"},
+            {"path": "differential/rust/core/core_adapter.c", "contains": "tlv_ber_tag_number(&decoded.element.tag, &node->number)"}
+          ]
+        },
+        "rust-binding": {
+          "finding": "The same element-at-a-time model as Core, with source ranges from Decoded::layout. Strict DER is a separate Format::Der.read pass. With no public tag-number accessor (Rust #50), the adapter decodes numbers from Tag::as_bytes itself.",
+          "evidence": [
+            {"path": "differential/rust-binding/src/main.rs", "contains": "let layout = decoded.layout();"},
+            {"path": "differential/rust-binding/src/main.rs", "contains": ".read(wire, &limits, Strictness::Strict)"},
+            {"path": "differential/rust-binding/src/main.rs", "contains": "fn tag_number(tag: &[u8]) -> u64 {"}
+          ]
+        },
+        "der-parser": {
+          "finding": "One recursive call returns the whole SEQUENCE and SET tree. Other constructed values come back opaque. The caller must check the remainder for trailing bytes, and the adapter recomputes identifier and length spans from the input after acceptance.",
+          "evidence": [
+            {"path": "differential/rust/src/main.rs", "contains": "parse_der_recursive(&wire, 32)"},
+            {"path": "differential/rust/src/main.rs", "contains": "if !rest.is_empty() {"},
+            {"path": "differential/rust/src/main.rs", "contains": "_ => return Err(\"generic parser exposes opaque constructed contents\"),"},
+            {"path": "differential/rust/src/main.rs", "contains": "let length_size = 1 + if first > 128 {"}
+          ]
+        }
+      }
+    },
+    {
+      "id": "diagnostics",
+      "question": "What does a rejection tell the caller?",
+      "assessments": {
+        "core": {
+          "finding": "A single tlv_result_t code with a printable description, shared by every operation. This adapter reports no offsets.",
+          "evidence": [
+            {"path": "differential/rust/core/core_adapter.c", "contains": "tlv_result_string(native)"}
+          ]
+        },
+        "rust-binding": {
+          "finding": "The same Error codes as Core, carrying native offsets. Decode returns FormatError with an offset field, while strict validation returns ValidationError with a location, so the two passes have different error shapes.",
+          "evidence": [
+            {"path": "differential/rust-binding/src/main.rs", "contains": "e.offset.map(|n| start + n)"},
+            {"path": "differential/rust-binding/src/main.rs", "contains": "e.location.offset()"}
+          ]
+        },
+        "der-parser": {
+          "finding": "nom::Err wraps BerError in Incomplete, Error and Failure layers with no input offset. An incomplete child inside a delimited parent surfaces as BerError::Incomplete under Error, which differs from a truncated root.",
+          "evidence": [
+            {"path": "differential/rust/src/main.rs", "contains": "Err::Incomplete(_) => (\"truncated\", \"framing\"),"},
+            {"path": "differential/rust/src/main.rs", "contains": "BerError::Incomplete(_) => (\"invalid\", \"framing\"),"}
+          ]
+        }
+      }
+    },
+    {
+      "id": "lifetimes",
+      "question": "Who guarantees that returned views stay valid?",
+      "assessments": {
+        "core": {
+          "finding": "Tag and value views are pointers into the caller's buffer. Their validity is a documented convention that the compiler does not check.",
+          "evidence": [
+            {"path": "differential/rust/core/core_adapter.c", "contains": "node->value_offset = (size_t)(decoded.element.value.data - input);"}
+          ]
+        },
+        "rust-binding": {
+          "finding": "Decoded borrows the input and the compiler enforces it. The adapter forbids unsafe code.",
+          "evidence": [
+            {"path": "differential/rust-binding/src/main.rs", "contains": "#![forbid(unsafe_code)]"}
+          ]
+        },
+        "der-parser": {
+          "finding": "BerObject borrows the input and the compiler enforces it. The adapter uses no unsafe code.",
+          "evidence": [
+            {"path": "differential/rust/src/main.rs", "contains": "object: &BerObject,"}
+          ]
+        }
+      }
+    },
+    {
+      "id": "api-complexity",
+      "question": "How much library surface did the adapter need?",
+      "assessments": {
+        "core": {
+          "finding": "A small C surface that includes two format descriptors. Limits are a positional struct initializer.",
+          "evidence": [
+            {"path": "differential/rust/core/core_adapter.c", "contains": "tlv_der_limits_t limits = {16, 4096, 4096, 256};"}
+          ]
+        },
+        "rust-binding": {
+          "finding": "Limits are named struct fields. The public facade covers framing and strict validation, but not the ASN.1 helpers, typed codecs or DER schema (Rust #50, #51 and #52).",
+          "evidence": [
+            {"path": "differential/rust-binding/src/main.rs", "contains": "max_elements: 256,"}
+          ]
+        },
+        "der-parser": {
+          "finding": "Mapping errors needs a three-level match over nom and BerError variants.",
+          "evidence": [
+            {"path": "differential/rust/src/main.rs", "contains": "Err::Error(e) | Err::Failure(e) => match e {"}
+          ]
+        }
+      }
+    }
+  ]
+}
