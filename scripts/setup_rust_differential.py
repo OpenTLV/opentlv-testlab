@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Marek Cingel
 
-"""Build the two adapters from verified Cargo sources and a fresh Core release archive."""
+"""Build the three adapters from verified Cargo sources and a fresh Core release archive."""
 
 import argparse
 import json
@@ -17,11 +17,12 @@ import tempfile
 import urllib.request
 
 if __package__:
-    from . import check_rust_reference as reference
+    from . import check_rust_reference as reference, setup_rust_binding as binding
     from .run_differential import testlab_revision
     from .setup_lua import digest, require, run, write_json
 else:
     import check_rust_reference as reference
+    import setup_rust_binding as binding
     from run_differential import testlab_revision
     from setup_lua import digest, require, run, write_json
 
@@ -31,11 +32,21 @@ RUNS = ROOT / "build/rust-runs"
 RECEIPT = ROOT / "build/rust-provenance.json"
 
 
+PARTICIPANTS = ("core", "rust-binding", "der-parser")
+
+
+def package_pins():
+    return {"core": reference.load_json(PIN), "der-parser": reference.load_json(reference.PIN),
+            "rust-binding": reference.load_json(binding.PIN)}
+
+
 def implementation_identity():
     paths = [*sorted((ROOT / "differential/rust").glob("src/*.rs")),
              *sorted((ROOT / "differential/rust/core").glob("*")),
              ROOT / "differential/rust/Cargo.toml", ROOT / "differential/rust/Cargo.lock",
-             PIN, reference.PIN, Path(__file__), ROOT / "scripts/check_rust_reference.py",
+             PIN, reference.PIN, binding.PIN, ROOT / "scripts/setup_rust_binding.py",
+             *sorted((ROOT / "differential/rust-binding/src").glob("*.rs")),
+             ROOT / "differential/rust-binding/Cargo.toml", ROOT / "differential/rust-binding/Cargo.lock", Path(__file__), ROOT / "scripts/check_rust_reference.py",
              ROOT / "scripts/run_rust_differential.py", ROOT / "scripts/rust_adapter_process.py",
              ROOT / "scripts/setup_lua.py",
              ROOT / "differential/rust/observation.schema.json"]
@@ -111,11 +122,12 @@ def setup(directory, core_assets=None):
     ]
     for command in commands:
         run(command, cwd=ROOT, log=log, timeout=600)
+    binding_binary, binding_evidence, binding_files = binding.build(directory / "binding", extract_source)
     require(implementation_identity() == implementation, "implementation changed during build; rerun setup")
     suffix = ".exe" if os.name == "nt" else ""
     candidates = list(native_build.rglob("testlab-core" + suffix))
     require(len(candidates) == 1, "missing or ambiguous Core executable")
-    binaries = {"core": candidates[0], "der-parser": directory / "cargo-target/debug" /
+    binaries = {"core": candidates[0], "rust-binding": binding_binary, "der-parser": directory / "cargo-target/debug" /
                 ("testlab-der-reference" + suffix)}
     cache = native_build / "CMakeCache.txt"
     configuration = {line.split("=", 1)[0]: line.split("=", 1)[1]
@@ -123,7 +135,7 @@ def setup(directory, core_assets=None):
                      if line.startswith(("OPENTLV_", "CMAKE_C_COMPILER:", "CMAKE_CXX_COMPILER:",
                                          "CMAKE_GENERATOR:", "CMAKE_BUILD_TYPE:")) and "=" in line}
     receipt = {"schema": 1, "status": "passed", "directory": str(directory),
-               "packages": {"core": pin, "der-parser": external}, "testlab": testlab_revision(),
+               "packages": package_pins(), "binding": binding_evidence, "testlab": testlab_revision(),
                "acquisition": "supplied-verified-release-assets" if core_assets else "fresh-release-download",
                "runtime": {"platform": platform.platform(), "machine": platform.machine(),
                            "rustc": run(["rustc", "-vV"]), "cargo": run(["cargo", "-V"]),
@@ -131,7 +143,7 @@ def setup(directory, core_assets=None):
                "configuration": configuration, "commands": [[str(x) for x in c] for c in commands],
                "implementation": implementation,
                "binaries": {name: {"path": str(path), "sha256": digest(path)} for name, path in binaries.items()},
-               "files": {str(cache): digest(cache), str(log): digest(log),
+               "files": {**binding_files, str(cache): digest(cache), str(log): digest(log),
                          **{str(assets / name): checksum for name, checksum in pin["assets"].items()}}}
     write_json(directory / "provenance.json", receipt)
     return receipt
@@ -141,9 +153,9 @@ def load_receipt(path):
     receipt = reference.load_json(path)
     require(receipt.get("schema") == 1 and receipt.get("status") == "passed", "setup has not passed")
     require(receipt["implementation"] == implementation_identity(), "adapter implementation changed; rerun setup")
-    require(receipt["packages"] == {"core": reference.load_json(PIN),
-                                    "der-parser": reference.load_json(reference.PIN)}, "setup pins changed")
-    require(set(receipt["binaries"]) == {"core", "der-parser"}, "setup participant set changed")
+    require(receipt["packages"] == package_pins(), "setup pins changed")
+    require(set(receipt["binaries"]) == set(PARTICIPANTS), "setup participant set changed")
+    binding.verify_selection(receipt["binding"]["core_selection"], receipt["packages"]["rust-binding"])
     for binary in receipt["binaries"].values():
         require(digest(Path(binary["path"])) == binary["sha256"], "adapter executable changed")
     for name, checksum in receipt["files"].items():
@@ -156,9 +168,11 @@ def main(arguments=None):
     parser.add_argument("--core-assets", type=Path,
                         help="use verified release assets supplied locally; recorded as supplied, not a fresh download")
     parser.add_argument("--output", type=Path, default=RECEIPT)
+    parser.add_argument("--runs-dir", type=Path, default=RUNS,
+                        help="fresh build parent; use a short absolute path for Windows/MSVC")
     args = parser.parse_args(arguments)
-    RUNS.mkdir(parents=True, exist_ok=True)
-    directory = Path(tempfile.mkdtemp(prefix="run-", dir=RUNS))
+    args.runs_dir.mkdir(parents=True, exist_ok=True)
+    directory = Path(tempfile.mkdtemp(prefix="run-", dir=args.runs_dir.resolve()))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     # Replace the selector first: a failed setup must not leave an older success selectable.
     failure = {"schema": 1, "status": "failed", "directory": str(directory), "error": "setup incomplete"}
@@ -166,7 +180,7 @@ def main(arguments=None):
     try:
         receipt = setup(directory, args.core_assets)
         write_json(args.output, receipt)
-        print(f"Built verified Core and der-parser adapters: {args.output}")
+        print(f"Built verified Core, Rust binding and der-parser adapters: {args.output}")
         return 0
     except (OSError, ValueError, KeyError, subprocess.SubprocessError, tarfile.TarError) as error:
         failure["error"] = str(error)

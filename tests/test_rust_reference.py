@@ -120,7 +120,9 @@ class RustReferenceTests(unittest.TestCase):
         self.assertEqual(fixtures["ber-private-class-indefinite"]["classification"], "unsupported")
         self.assertEqual(fixtures["der-explicit-context"]["classification"], "unsupported")
         self.assertEqual(fixtures["der-private-class"]["classification"], "shared")
-        self.assertTrue(all(row["rust_binding"]["status"] == "not-tested" for row in self.matrix["features"]))
+        features = {row["id"]: row for row in self.matrix["features"]}
+        self.assertEqual(features["schema"]["rust_binding"]["status"], "unsupported")
+        self.assertEqual(features["framing"]["rust_binding"]["status"], "supported")
 
     def test_documented_counts_match_the_corpus(self):
         fixtures = self.corpus["fixtures"]

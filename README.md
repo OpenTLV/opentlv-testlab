@@ -24,7 +24,8 @@ binding repository.
 | [BER and CER differential](docs/ber-cer-differential.md) | OpenTLV BER and CER interoperability with asn1c, judged against an independent X.690 reference |
 | [Differential fuzzing](docs/differential-fuzzing.md) | Local, exploratory BER, DER and CER fuzzing against asn1c and X.690: strategies, feature intersection, findings, triage and disclosure policy |
 | [Rust reference baseline](docs/rust-reference.md) | Exact der-parser pin, dependency provenance, BER/DER capability intersection, reviewed fixtures and normalized observation contract |
-| [Rust differential runner](docs/rust-differential.md) | Core versus der-parser execution, fresh release setup, bounded adapters, reproducible reports and CI failure gates |
+| [Published Rust binding audit](docs/rust-binding.md) | Public API capability/gap matrix, published 0.2.2 provenance and linked Rust fixes |
+| [Rust differential runner](docs/rust-differential.md) | Core/Rust/der-parser execution, fresh release setup, bounded adapters, reproducible reports and CI failure gates |
 
 ## Reproduce a comparison locally
 
@@ -112,8 +113,10 @@ runtime or timeout fails the command.
 | `python3 scripts/setup_asn1c.py --sanitize` | Build the asn1c adapter with AddressSanitizer and UndefinedBehaviorSanitizer for fuzzing |
 | `python3 scripts/run_fuzz.py` | Fuzz OpenTLV BER, DER and CER against asn1c locally; see the [fuzzing guide](docs/differential-fuzzing.md) |
 | `python3 scripts/check_rust_reference.py` | Validate the Rust dependency and fixture contracts; add `--verify-cache` to verify offline Cargo archives and sources |
-| `python3 scripts/setup_rust_differential.py` | Freshly acquire pinned Core release sources and build both comparison adapters |
-| `python3 scripts/run_rust_differential.py` | Compare the reviewed BER/DER corpus with Core and der-parser; real shared mismatches exit 3 |
+| `python3 scripts/setup_rust_differential.py` | Freshly acquire pinned Core and published Rust crates and build all three adapters |
+| `python3 scripts/run_rust_differential.py` | Compare the reviewed BER/DER corpus with Core, published Rust and der-parser; real shared mismatches exit 3 |
+| `python3 scripts/check_rust_binding.py` | Audit pinned public Rust API gap evidence against a verified setup; open gaps remain open |
+| `python3 scripts/setup_rust_binding.py` | Verify the published Rust package pin without downloading or building |
 | `python3 scripts/check_rust_differential.py` | Verify repeated agreement, mismatch reproduction and setup-failure reports |
 | `python3 scripts/check_rust_regressions.py` | Run the complete corpus and require exact recorded reference divergences; retain the separate standards mismatch report |
 
@@ -256,8 +259,8 @@ See [Fast gate and extended suite](docs/ci.md) for what each one checks and how 
 the result. Neither runs the exploratory [fuzzer](docs/differential-fuzzing.md#ci); Fast runs only
 its unit tests.
 
-A separate Fast job runs the [Core/der-parser differential](docs/rust-differential.md) with
-verified external Cargo caching and fresh Core source acquisition. The reviewed corpus exposes
+A separate Fast job runs the [Core/Rust/der-parser differential](docs/rust-differential.md) with
+verified external Cargo caching and fresh Core/Rust package acquisition. The reviewed corpus exposes
 shared mismatches. Its regression gate requires exact recorded observations for six source-audited
 reference divergences and fails on new or changed differences. The standards report retains all
 six mismatches and its original agreement denominator. Generic DER acceptance is not full canonical validation.
@@ -268,8 +271,8 @@ six mismatches and its original agreement denominator. Generic DER acceptance is
   correct in general or that lua-asn1 is a validating decoder.
 - `unsupported` and `inconclusive` fixtures are not evidence about OpenTLV. They keep
   observations for reading, and a disagreement on one never decides a run.
-- Setup and the runner support only Lua 5.2 on Linux or WSL; OpenTLV's own Lua support is
-  wider. Other Lua versions, native Windows and macOS are not yet supported here.
+- The Lua setup and runner support only Lua 5.2 on Linux or WSL; OpenTLV's own Lua support
+  is wider. The Rust comparison separately supports Linux/WSL and Windows/MSVC.
 - Setup checks what the registry serves and what was installed. It does not repeat
   OpenTLV's release gate or verify Sigstore attestations.
 

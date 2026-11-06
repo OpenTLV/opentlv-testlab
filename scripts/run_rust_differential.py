@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Marek Cingel
 
-"""Compare reviewed BER/DER bytes through Core and der-parser against X.690."""
+"""Compare reviewed BER/DER bytes through Core, the published Rust binding and der-parser against X.690."""
 
 import argparse
 from collections import Counter
@@ -30,6 +30,8 @@ REPORTS = ROOT / "build/rust-reports"
 OUTCOMES = ("pass", "mismatch", "unsupported", "inconclusive")
 APIS = {"core": {"ber": "tlv_format_decode(tlv_format_ber); tlv_ber_tag_number",
                  "der": "tlv_der_read_strict; tlv_format_decode(tlv_format_der); tlv_ber_tag_number"},
+        "rust-binding": {"ber": "FormatRef::decode(Format::Ber); Decoded::layout; Tag::as_bytes",
+                         "der": "Format::Der.read(Strictness::Strict); FormatRef::decode(Format::Der); Decoded::layout; Tag::as_bytes"},
         "der-parser": {"ber": "parse_ber_recursive(fuel=32)", "der": "parse_der_recursive(fuel=32)"}}
 
 
@@ -89,8 +91,10 @@ def normalize(name, fixture, record):
     encoding = fixture["encoding"]
     checks = ["single-root", "framing", "wire-tree"]
     if encoding == "der":
-        checks.append("recursive-DER-framing-and-primitive-contents" if name == "core" else
+        checks.append("recursive-DER-framing-and-primitive-contents" if name in ("core", "rust-binding") else
                       "generic-DER-root-checks; nested-SEQUENCE/SET-use-BER")
+    if name == "rust-binding":
+        checks.append("tag-number/class/constructed projected from public accepted Tag bytes")
     out = {"schema": 1, "contract": "rust-ber-der-1", "fixture": fixture["id"], "encoding": encoding,
            "participant": name, "api": APIS[name][encoding], "checks": checks,
            "result": result, "consumed": None, "tree": None, "error": None, "reason": None}
@@ -171,9 +175,9 @@ def coverage(fixtures):
 
 
 def render(report):
-    lines = ["# Core / der-parser differential", "", f"Status: **{report['status']}**", "",
+    lines = ["# Core / Rust binding / der-parser differential", "", f"Status: **{report['status']}**", "",
              "Committed reviewed inputs only. Agreement is scoped to the listed checks; it is not full conformance.",
-             "Rust binding execution and exposure are not tested (#31).", ""]
+             "Published Rust 0.2.2 public facade; the gap audit is separate from fixture agreement.", ""]
     if report.get("error"):
         lines += ["Run failure: " + report["error"], ""]
     lines += ["| Encoding | Executed | Shared | Shared pass | Shared pass % |",
@@ -217,7 +221,7 @@ def main(arguments=None):
         for fixture in fixtures:
             active = fixture["id"]
             observed = {name: run_adapter(name, fixture, Path(receipt["binaries"][name]["path"]))
-                        for name in ("core", "der-parser")}
+                        for name in setup.PARTICIPANTS}
             outcome, differences, reasons = classify(fixture, observed)
             command = [sys.executable, "scripts/run_rust_differential.py", "--fixture", active]
             row = {**fixture, "observed": observed, "outcome": outcome, "differences": differences,
