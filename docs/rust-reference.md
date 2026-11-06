@@ -7,12 +7,12 @@ This is the dependency and fixture contract for [#29](https://github.com/OpenTLV
 part of [epic #19](https://github.com/OpenTLV/opentlv-testlab/issues/19). It provides a locked external
 dependency, an external-only capability audit, standards-based fixtures and a normalized observation
 schema. The [Core comparison runner and its CI integration](rust-differential.md) implement #30;
-the Rust binding audit and three-way comparison belong to #31. This page describes the baseline
+the [published Rust audit and three-way comparison](rust-binding.md) implement #31's comparison work. This page describes the baseline
 contract; execution results and limitations are documented in the runner guide.
 
 ## Dependency identity and provenance
 
-The only direct Rust dependency is **der-parser =10.0.0**, from crates.io, with default features
+The external reference's only direct dependency is **der-parser =10.0.0**, from crates.io, with default features
 disabled and only `std` selected. Serialization, bigint, bitvec and unstable features are disabled.
 `asn1-rs` is a transitive dependency, not a second reference integration. No dependencies are added to
 Core or a binding. The unpublished TestLab package lives in
@@ -78,9 +78,9 @@ changed archives or source files fail; this command neither repairs nor download
 
 Cargo's registry cache may be reused for this external dependency. The runner's CI cache uses an
 exact key including OS, target, toolchain, manifest and lockfile, and revalidates on a hit. Do not
-cache an OpenTLV package under test: #30 freshly acquires Core release sources; #31 must follow the existing
-[consumer policy](dependencies.md#fresh-opentlv-package-from-luarocks), adapted to its actual source
-or registry, and record the exact Core revision, configuration and binding features. A sibling
+cache an OpenTLV package under test: #30 freshly acquires Core release sources and #31 freshly
+acquires published Rust crates, following the existing [consumer policy](dependencies.md#fresh-opentlv-package-from-luarocks).
+The receipt records the exact Core revision, configuration and binding features. A sibling
 development checkout is not a substitute for a released consumer baseline.
 
 Pin changes require review: verify registry/archive identity and notices, update the exact direct
@@ -96,8 +96,9 @@ binding, reference BER and reference DER. Its statuses are `supported`, `unsuppo
 `not-comparable` and `not-tested`. They describe availability for a named subset, not measured
 conformance or a pass rate. Core evidence is a source/API review of v0.8.0, commit
 `345c77acb29266036df5f27d04ce315bb61853cc`, matching the existing TestLab Core baseline. The runner
-records the actual build and observations separately. All Rust binding rows remain `not-tested`; published 0.2.2 is the
-epic's intended starting point, not execution evidence or an assumed API equivalence.
+records the actual build and observations separately. The #31 audit records published Rust 0.2.2
+exposure and public-facade probes; source-reviewed or untested capabilities are identified explicitly.
+The [binding guide](rust-binding.md) lists confirmed missing APIs without treating them as implemented.
 
 | Scenario | Core API requirement | Reference capability and initial decision |
 | --- | --- | --- |
@@ -203,7 +204,7 @@ contents, canonicality, schema, policy and unknown. Category meanings reuse Test
 definite parent bounds the failure. Never report a crash, timeout, missing dependency or malformed
 adapter output as an invalid BER/DER input. Those are run failures.
 
-The runner uses existing outcomes: `pass` when both shared checks meet the independent
+The runner uses existing outcomes: `pass` when all participant shared checks meet the independent
 expectation, `mismatch` when a shared check disagrees, `unsupported` for a missing operation, and
 `inconclusive` when available evidence cannot decide the rule. The latter two require reasons and
 are excluded from pass-rate denominators. A mismatch is an observation needing triage, not a
@@ -231,5 +232,5 @@ channel is enabled for this repository or upstream merely because it is mentione
 
 The original #29 local verification on Windows/MSVC included the minimum Rust 1.78.0 external audit,
 offline archive/source verification and Python contract tests. The #30 runner adds Core execution,
-differential reports and a dedicated Fast job; see its [guide](rust-differential.md). Rust binding
-execution, hosted qualification and release/publication evidence are separate.
+differential reports and a dedicated Fast job; see its [guide](rust-differential.md). The #31 extension adds published Rust
+execution; hosted qualification and release/publication evidence remain separate.

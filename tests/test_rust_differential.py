@@ -195,9 +195,13 @@ class RustSetupTests(unittest.TestCase):
             executable = root / "adapter"
             executable.write_bytes(b"original executable")
             receipt = {"schema": 1, "status": "passed", "implementation": setup.implementation_identity(),
-                       "packages": {"core": reference.load_json(setup.PIN), "der-parser": reference.load_json(reference.PIN)},
+                       "packages": setup.package_pins(),
+                       "binding": {"core_selection": {"mode": "verified-source", "verified": True, "dirty": False,
+                           **{k: v for k, v in setup.package_pins()["rust-binding"]["core_lock"].items()
+                              if k in ("repository", "version", "commit", "release_tag")},
+                           "locked_version": "0.8.0", "locked_commit": reference.load_json(setup.PIN)["commit"]}},
                        "binaries": {name: {"path": str(executable), "sha256": setup.digest(executable)}
-                                    for name in ("core", "der-parser")},
+                                    for name in setup.PARTICIPANTS},
                        "files": {str(executable): setup.digest(executable)}}
             path = root / "receipt.json"
             for change, message in ((lambda r: r.update(implementation={}), "implementation changed"),
@@ -214,7 +218,7 @@ class RustSetupTests(unittest.TestCase):
         job = workflow.split("  rust-differential:")[1].split("  capabilities:")[0]
         self.assertNotIn("restore-keys", job)
         self.assertNotIn("continue-on-error", job)
-        self.assertIn("x86_64-unknown-linux-gnu-1.78.0", job)
+        self.assertIn("x86_64-unknown-linux-gnu-1.82.0", job)
         self.assertIn("scripts/check_rust_reference.py --verify-cache", job)
         self.assertIn("scripts/check_rust_differential.py", job)
         self.assertIn("run: python3 scripts/check_rust_regressions.py", job)

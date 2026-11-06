@@ -1,23 +1,25 @@
 <!-- SPDX-License-Identifier: MIT -->
 <!-- Copyright (c) 2026 Marek Cingel -->
 
-# Core BER/DER differential against der-parser
+# Core / published Rust / der-parser differential
 
-The runner for [#30](https://github.com/OpenTLV/opentlv-testlab/issues/30) executes the
-[reviewed #29 corpus and observation contract](rust-reference.md) through Core **v0.8.0** and
-**der-parser 10.0.0**. Both receive identical octets. Independent X.690 expectations decide the
-outcome; agreement between the libraries alone is insufficient. No Rust binding executes here;
-that audit and the three-way comparison belong to #31.
+The runner from [#30](https://github.com/OpenTLV/opentlv-testlab/issues/30), extended by
+[#31](https://github.com/OpenTLV/opentlv-testlab/issues/31), executes the
+[reviewed #29 corpus and observation contract](rust-reference.md) through Core **v0.8.0**,
+published **opentlv/opentlv-sys 0.2.2** and **der-parser 10.0.0**. All receive identical octets.
+Independent X.690 expectations decide the outcome; agreement alone is insufficient. The
+[published Rust audit](rust-binding.md) separates public API exposure from Core/reference support.
 
 ## Run locally
 
-Use Python 3.10+, Rust/Cargo 1.78.0 or later, CMake 3.24+, Git and native C/C++ build tools.
+Use Python 3.10+, Rust/Cargo 1.82.0 or later, CMake 3.24+, Git and native C/C++ build tools.
 Linux/WSL and Windows/MSVC are supported. Start in the TestLab root:
 
 ```sh
 cargo fetch --locked --manifest-path differential/rust/Cargo.toml
 python3 scripts/check_rust_reference.py --verify-cache
 python3 scripts/setup_rust_differential.py
+python3 scripts/check_rust_binding.py
 python3 scripts/check_rust_differential.py
 python3 scripts/run_rust_differential.py
 python3 scripts/check_rust_regressions.py
@@ -27,14 +29,18 @@ On Windows use `python` instead of `python3`. Setup downloads the published Core
 and release manifest afresh into a new `build/rust-runs/run-*` directory. It verifies their
 pinned SHA-256 digests and manifest version/commit, safely extracts the archive and builds a
 static Core plus the C adapter. It separately verifies all 19 Cargo archives and packaged sources,
-then tests and builds the Rust adapter offline into that run's own target directory. No Lua or
-asn1c setup is involved. Only external Cargo registry data may be cached.
+then tests and builds the reference adapter offline into that run's own target directory. It
+also freshly acquires both published Rust crates and runs their verified Core resolver, tests
+the public facade and builds the third adapter; see [binding provenance](rust-binding.md#provenance-and-reproduction).
+No Lua or asn1c setup is involved. Only external Cargo registry data may be cached.
 
 For a machine where downloads must be transferred separately, `--core-assets DIRECTORY` accepts
 the exact two release assets named by [the Core pin](../dependencies/opentlv-core.json). It still
 verifies and freshly extracts/builds them, but the receipt explicitly records
 `supplied-verified-release-assets`, not a fresh download. CI always uses fresh acquisition.
-This path does not accept a development checkout, a custom source tree or an arbitrary executable.
+This option applies only to the direct Core participant; the binding still acquires its own
+verified release. It does not accept a development checkout, custom source or arbitrary executable.
+On Windows/MSVC, `--runs-dir` can select a shorter absolute build parent to avoid path-length limits.
 
 `build/rust-provenance.json` selects the last setup attempt. Setup invalidates this selector before
 starting, so a failure cannot silently select an older successful build. Receipts preserve exact
@@ -66,11 +72,13 @@ The corpus remains **63 fixtures: 35 BER and 28 DER**, with **52 shared, 2 unsup
 | --- | --- | --- |
 | Core BER | `tlv_format_decode(tlv_format_ber)`, recursive traversal, `tlv_ber_tag_number` | Raw BER framing and complete ordered wire tree; no blanket typed BER validation |
 | Core DER | `tlv_der_read_strict`, then `tlv_format_decode(tlv_format_der)` traversal | Recursive DER framing and implemented universal primitive content checks; no schema validation |
+| Rust BER | `FormatRef::decode(Format::Ber)`, `Decoded::layout`, recursive traversal | Public framing/source ranges and complete ordered children; numeric tag presentation projected from accepted `Tag::as_bytes` |
+| Rust DER | `Format::Der.read(Strictness::Strict)`, then public Format decode traversal | Recursive strict DER checks, native error/location evidence; no schema validation |
 | Reference BER | `parse_ber_recursive` with recursion fuel 32 | Generic BER object parse and complete SEQUENCE/SET child observations |
 | Reference DER | `parse_der_recursive` with recursion fuel 32 | Generic DER root checks; SEQUENCE/SET children use BER recursion, not strict nested DER validation |
 
-Adapters return library-derived class, tag number, P/C bit, content lengths, ranges and tree
-structure. The shared Python normalizer projects those ranges onto the original wire bytes;
+Adapters return library-derived content lengths, ranges and tree structure. Core/reference
+tag fields come from their APIs; Rust projects tag fields from the accepted public identifier bytes. The shared Python normalizer projects those ranges onto the original wire bytes;
 it never invokes X.690 to repair a participant's observation. It validates complete consumption,
 child ordering, parent bounds and range consistency. Indefinite nodes exclude their own EOC but
 preserve an encoded child's EOC in their raw contents. Wide INTEGERs stay raw; no int64 conversion
@@ -80,10 +88,10 @@ an extra library comparison.
 Generic reference objects with opaque constructed contents are `unsupported`, not complete trees.
 Constructed strings, schema-dependent DEFAULT/order rules, nested canonicality, noncanonical BER
 TRUE, EOC policy and architecture-dependent wide lengths retain their declared nonshared outcomes.
-CER, encoding and Rust binding exposure remain outside this runner.
+CER and three-way encoding remain outside this runner. Binding encoding has separate public probes.
 
-Errors retain their native text, source and stage; offsets are `null` because these adapter paths
-do not supply an unambiguous native location. Native truncation inside an already delimited parent
+Errors retain their native text, source and stage. Rust preserves public native offsets (child
+offsets are rebased to the input); Core/reference paths retain `null` when no location is supplied. Native truncation inside an already delimited parent
 is `invalid`, while exhaustion of the root input is `truncated`. Reference `InvalidTag` stays
 `invalid` even on an incomplete identifier: the report preserves that category disagreement.
 No unrelated integer error values are equated. Unknown mappings are inconclusive evidence.
@@ -91,22 +99,22 @@ No unrelated integer error values are equated. Unknown mappings are inconclusive
 ## Reports and gate behavior
 
 Default reports are `build/rust-reports/comparison.json` and `comparison.md`. JSON retains all
-input bytes, fixture origins, X.690 rules, independent expectations, both normalized observations,
+input bytes, fixture origins, X.690 rules, independent expectations, all three normalized observations,
 native errors, classifications, differences, reproduction commands and the complete setup receipt.
 Reports identify the TestLab commit and whether the checkout was modified. A modified checkout
 needs the recorded local files as well as that commit to reproduce the same implementation.
 
 | Outcome | Meaning |
 | --- | --- |
-| `pass` | Both participants meet the independent shared expectation |
+| `pass` | All three participants meet the independent shared expectation |
 | `mismatch` | A shared result, category or tree disagrees, or a declared shared capability is missing |
 | `unsupported` | Fixture explicitly excludes a missing operation; never a pass |
 | `inconclusive` | Fixture excludes an undecidable rule, or native evidence has no justified mapping |
 
 Coverage reports separate BER, DER and combined totals. The shared pass percentage divides shared
 passes by the number of executed shared fixtures; unsupported/inconclusive fixtures never inflate
-it. This is fixture execution coverage, not a percentage of X.690 or Core API coverage. Both Core
-and reference observations are retained separately; Rust binding coverage remains not tested.
+it. This is fixture execution coverage, not a percentage of X.690 or Core API coverage. Core, Rust and reference
+observations are retained separately. Open Rust API gaps are not counted as implemented capabilities.
 
 Exit **0** requires every selected shared fixture to pass. Exit **3** means a shared mismatch.
 Exit **1** means setup/process/protocol failure or inconclusive evidence on a shared fixture.
@@ -126,8 +134,8 @@ standards-conformance gate. It writes separate `regressions.json` and `regressio
 The comparison report still says `mismatch`, with 46/52 shared agreement; the six divergences
 are never converted to passes. The raw runner continues to exit 3.
 
-The baseline contains the exact observations of **both** participants for six named cases,
-bound to canonical JSON hashes of the complete corpus and both dependency pins. Each entry cites
+The baseline contains the exact observations of **all three** participants for six named cases,
+bound to canonical JSON hashes of the complete corpus and all dependency pins. Each entry cites
 the pinned source path, capability test and hosted evidence, and explains whether it is a
 reference acceptance or a diagnostic-category difference:
 
@@ -139,8 +147,8 @@ reference acceptance or a diagnostic-category difference:
   constraint is commented out in the pinned published source.
 
 Exit 0 from the regression gate requires every other shared fixture to pass and all six cases
-to match their recorded full observations, including native errors and Core's correct rejection.
-New mismatches, a Core regression, changed reference behavior, missing/duplicate fixtures,
+to match their recorded full observations, including native errors and correct rejections from Core and Rust.
+New mismatches, a Core or Rust regression, changed reference behavior, missing/duplicate fixtures,
 inconclusive shared evidence, changed pins/corpus, stale reports and process/setup failures exit 1.
 An upstream fix that removes a divergence also fails until its baseline entry is reviewed.
 The gate has no automatic baseline-update or arbitrary-report-input option.
@@ -152,9 +160,14 @@ a fixture to unsupported to fit a reference difference. No third-party source is
 ### Local execution evidence
 
 On 2026-11-05, a fresh published Core source acquisition and Windows/MSVC Release build, with
-Rust 1.98.1, produced **46 pass, 6 mismatch, 2 unsupported, 9 inconclusive**. Both complete reports
-were identical on repeat, and all six mismatch reports reproduced from their recorded commands.
-Core met all 52 shared expectations. The reference disagreed on these unchanged reviewed cases:
+Rust 1.98.1 and freshly acquired published Rust 0.2.2 crates, produced **46 pass, 6 mismatch, 2 unsupported, 9 inconclusive**. The agreement and mismatch probes
+were identical on repeat and the mismatch probe reproduced from its recorded command.
+A second clean setup using Rust 1.82.0 also passed all four public-facade probes, the published
+gap evidence audit, report/failure probes and the full three-way regression gate. All 296 Python
+tests passed. The regression checker reconstructs the runner's participant order after JSON
+key sorting, so multi-participant differences retain their original list order.
+
+Core and the Rust binding each met all 52 shared expectations. The reference disagreed on these unchanged reviewed cases:
 
 | Fixtures | Independent expectation | Reference observation |
 | --- | --- | --- |
@@ -165,15 +178,15 @@ Core met all 52 shared expectations. The reference disagreed on these unchanged 
 
 The final two are diagnostic-category differences, not acceptance of malformed input. Combined
 shared agreement was 46/52 (88.46%); BER was 26/28 (92.86%) and DER 20/24 (83.33%). These are
-fixture-scoped results, with the limitations above. The minimum Rust 1.78.0 build and all 12
-reference capability tests also passed.
+fixture-scoped results, with the limitations above. The external reference baseline was separately
+validated with Rust 1.78.0; that older minimum-toolchain evidence does not cover the Rust binding.
 
 The original [PR #34 Rust job](https://github.com/OpenTLV/opentlv-testlab/actions/runs/42055907418/job/127344106069)
 at commit `4ebc300f80395c717045abcb640295d89e55c940` passed setup and failure probes on Linux with
 Rust 1.78.0, then failed at the standards runner's exit 3. Its downloaded artifact contains all
-126 observations, exactly matching the local Windows observations. The new regression gate was
-validated locally against both that hosted report and a fresh local comparison. A hosted run
-of the corrected workflow is still pending. No Rust binding validation or publication is claimed.
+126 Core/reference observations, matching the earlier local Windows observations. That historical
+two-participant artifact does not qualify the #31 three-way change. The new Rust participant has
+local execution evidence only; no hosted qualification or new publication is claimed.
 
 ## Bounds and CI
 
@@ -199,10 +212,11 @@ loss, independent expectations, coverage denominators and a real over-budget all
 python3 -m unittest discover -s tests -p 'test_rust*.py' -v
 ```
 
-Fast has a dedicated Ubuntu 24.04 x86-64 job using Rust 1.78.0. The external cache key includes OS,
+Fast has a dedicated Ubuntu 24.04 x86-64 job using Rust 1.82.0. The external cache key includes OS,
 target, toolchain, manifest, lockfile and dependency inventory with no fallback keys. A cache hit
-is verified before compilation or acquisition. Core, native binaries and Cargo build targets are
-never cached. The job runs policy tests, fresh setup, failure/repeat probes and the complete corpus
+is verified before compilation or acquisition. OpenTLV crates, Core, native binaries and Cargo build
+targets are never cached. The job runs policy tests, fresh setup, the published gap evidence audit,
+failure/repeat probes and the complete corpus
 through the explicit regression gate. Reports, receipts and build logs upload even on failure.
 Unexpected or changed shared mismatches fail the job; the exact six source-audited reference
 divergences retain their failing standards verdict in the comparison report.

@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "scope": "ASN.1 capabilities relevant to the BER/DER comparison; not full API/ABI disposition",
+  "published_version": "0.2.2",
+  "gaps": [
+    {
+      "id": "asn1-helpers",
+      "status": "open",
+      "core_support": "supported",
+      "published_rust_exposure": "missing",
+      "issue": "https://github.com/OpenTLV/opentlv-rust/issues/50",
+      "coordination": "https://github.com/OpenTLV/opentlv-rust/issues/46",
+      "tested_fix": null,
+      "core_header": {
+        "path": "tlv/include/tlv/builtins/asn1/ber.h",
+        "sha256": "4738edb67fa9be68e0c4d3e93b14aa58549bbcbbb597d1bea537ae73665a906d"
+      },
+      "native_anchors": [
+        "tlv_ber_tag_make",
+        "tlv_ber_tag_number",
+        "tlv_ber_read_identifier",
+        "tlv_ber_length_decode",
+        "tlv_ber_length_encode",
+        "tlv_ber_write_indefinite",
+        "tlv_format_ber_indefinite"
+      ],
+      "reviewed_sources": {
+        "opentlv-0.2.2/src/tag.rs": "bf2fe743061e9ff697867805946a48648555576793f2d15eff29a1994e455f8c",
+        "opentlv-0.2.2/src/format.rs": "8098cf2c4e9fdb6b9286569b7432ae1c6c839c50bc4b645e59d08408fc8c6d3e",
+        "opentlv-0.2.2/src/writer.rs": "4292e6293998b9bd57809d866612d303669ec71505b1e0c577f981768b50ba0d"
+      }
+    },
+    {
+      "id": "asn1-codecs",
+      "status": "open",
+      "core_support": "supported",
+      "published_rust_exposure": "missing",
+      "issue": "https://github.com/OpenTLV/opentlv-rust/issues/51",
+      "coordination": "https://github.com/OpenTLV/opentlv-rust/issues/46",
+      "tested_fix": null,
+      "core_header": {
+        "path": "tlv/include/tlv/builtins/asn1/asn1_codec.h",
+        "sha256": "2f127cb8481dabe008fd1c0294b7c9695abea08f9248395c6aed22a21f6efdf9"
+      },
+      "native_anchors": [
+        "tlv_asn1_codec_boolean",
+        "tlv_asn1_codec_integer",
+        "tlv_asn1_codec_bit_string",
+        "tlv_asn1_codec_oid"
+      ],
+      "reviewed_sources": {
+        "opentlv-0.2.2/src/codec.rs": "4693f16173131cc6f77bd05774971c6ee6d18508baedc326aa3cdb9cd1ee30d5",
+        "opentlv-0.2.2/src/value_codec.rs": "0ac047cd27d9ee9e019e5855049d7b42ec399046a4d07870f19ae15e766ad38d",
+        "opentlv-0.2.2/src/validation.rs": "117ef9e726dba7485aac5b0dffd4c91f26a5f081623d2c5fab58c15b6442074f"
+      }
+    },
+    {
+      "id": "der-schema",
+      "status": "open",
+      "core_support": "supported",
+      "published_rust_exposure": "missing",
+      "issue": "https://github.com/OpenTLV/opentlv-rust/issues/52",
+      "coordination": "https://github.com/OpenTLV/opentlv-rust/issues/46",
+      "tested_fix": null,
+      "core_header": {
+        "path": "tlv/include/tlv/builtins/asn1/der_schema.h",
+        "sha256": "e24baaeef5e47e75b6834cc9b9ec1f644a8740b06314949e1c6746b8e5c1d877"
+      },
+      "native_anchors": [
+        "tlv_der_schema_prepare",
+        "tlv_der_schema_read",
+        "tlv_der_schema_write"
+      ],
+      "reviewed_sources": {
+        "opentlv-0.2.2/src/schema.rs": "7c633b6b896bba3094508a734834181c8b71bc474232c4fd8e5e525e56ffb3a0",
+        "opentlv-0.2.2/src/validation.rs": "117ef9e726dba7485aac5b0dffd4c91f26a5f081623d2c5fab58c15b6442074f"
+      }
+    }
+  ]
+}

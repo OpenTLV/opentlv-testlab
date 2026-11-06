@@ -16,8 +16,7 @@ class RustRegressionTests(unittest.TestCase):
     def setUp(self):
         self.corpus = gate.reference.load_json(gate.reference.CORPUS)
         self.baseline = gate.reference.load_json(gate.BASELINE)
-        self.packages = {"core": gate.reference.load_json(gate.setup.PIN),
-                         "der-parser": gate.reference.load_json(gate.reference.PIN)}
+        self.packages = gate.setup.package_pins()
         cases = {c["fixture"]: c for c in self.baseline["cases"]}
         rows = []
         for fixture in self.corpus["fixtures"]:
@@ -25,7 +24,7 @@ class RustRegressionTests(unittest.TestCase):
             expected = fixture["expected"]
             observed = {name: {"result": expected["result"], "tree": copy.deepcopy(expected.get("tree")),
                                "error": {"category": expected.get("error")}}
-                        for name in ("core", "der-parser")}
+                        for name in gate.setup.PARTICIPANTS}
             if fixture["id"] in cases:
                 observed = copy.deepcopy(cases[fixture["id"]]["observed"])
             outcome, differences, reasons = gate.runner.classify(fixture, observed)
@@ -41,7 +40,8 @@ class RustRegressionTests(unittest.TestCase):
         return next(f for f in self.report["fixtures"] if f["id"] == name)
 
     def reclassify(self, row):
-        row["outcome"], row["differences"], row["reasons"] = gate.runner.classify(row, row["observed"])
+        observed = {name: row["observed"][name] for name in gate.setup.PARTICIPANTS}
+        row["outcome"], row["differences"], row["reasons"] = gate.runner.classify(row, observed)
         self.report["coverage"] = gate.runner.coverage(self.report["fixtures"])
 
     def test_exact_divergences_pass_regression_gate_without_changing_standards_report(self):
@@ -51,6 +51,15 @@ class RustRegressionTests(unittest.TestCase):
         self.assertEqual(self.report["status"], "mismatch")
         self.assertEqual(self.report["coverage"]["all"]["outcomes"],
                          {"pass": 46, "mismatch": 6, "unsupported": 2, "inconclusive": 9})
+
+    def test_sorted_json_keys_preserve_multi_participant_difference_order(self):
+        row = self.row("der-default-encoded")
+        for name in gate.setup.PARTICIPANTS:
+            row["observed"][name] = {"result": "accept", "tree": {}}
+        self.reclassify(row)
+        self.assertEqual(len(row["differences"]), 3)
+        self.report = json.loads(json.dumps(self.report, sort_keys=True))
+        self.assertEqual(len(self.validate()), 6)
 
     def test_new_shared_mismatch_fails(self):
         row = self.row("der-sequence")
@@ -64,6 +73,18 @@ class RustRegressionTests(unittest.TestCase):
         row["observed"]["core"] = copy.deepcopy(row["observed"]["der-parser"])
         self.reclassify(row)
         with self.assertRaisesRegex(ValueError, "participant observation changed"):
+            self.validate()
+
+    def test_binding_regression_or_missing_binding_cannot_hide_behind_reference_baseline(self):
+        original = copy.deepcopy(self.report)
+        row = self.row("ber-high-tag-leading-80")
+        row["observed"]["rust-binding"] = copy.deepcopy(row["observed"]["der-parser"])
+        self.reclassify(row)
+        with self.assertRaisesRegex(ValueError, "participant observation changed"):
+            self.validate()
+        self.report = original
+        self.row("der-sequence")["observed"].pop("rust-binding")
+        with self.assertRaisesRegex(ValueError, "missing participant"):
             self.validate()
 
     def test_changed_reference_tree_and_native_error_fail(self):

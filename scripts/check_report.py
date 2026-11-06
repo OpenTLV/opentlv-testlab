@@ -24,7 +24,7 @@ else:
 # Each runner's report: the packages it names, the fields a mismatch needs and the receipt options.
 RUNNERS = {
     "run_rust_differential.py": {
-        "packages": {"core", "der-parser"},
+        "packages": {"core", "rust-binding", "der-parser"},
         "fields": ("wire", "encoding", "type", "rule", "expected", "differences", "reproduce"),
         "receipts": lambda provenance: ["--provenance", provenance],
     },

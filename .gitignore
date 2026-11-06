@@ -5,3 +5,4 @@
 __pycache__/
 *.pyc
 /differential/rust/target/
+/differential/rust-binding/target/

@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Marek Cingel
+
+[package]
+name = "testlab-rust-binding"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+publish = false
+license = "MIT"
+description = "Public published OpenTLV Rust BER/DER comparison participant"
+
+[dependencies]
+opentlv = { version = "=0.2.2", default-features = false }
+
+[workspace]

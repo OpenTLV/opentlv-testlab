@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   rust-differential:
-    name: Core BER/DER differential against der-parser
+    name: Core / published Rust / der-parser BER/DER differential
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -23,8 +23,8 @@ jobs:
           persist-credentials: false
       - name: Select the audited minimum Rust toolchain
         run: |
-          rustup toolchain install 1.78.0 --profile minimal
-          rustup default 1.78.0
+          rustup toolchain install 1.82.0 --profile minimal
+          rustup default 1.82.0
       - name: Restore exact external Cargo registry cache
         id: rust-cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -33,7 +33,7 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/registry/src
-          key: rust-reference-ubuntu-24.04-x86_64-unknown-linux-gnu-1.78.0-${{ hashFiles('differential/rust/Cargo.toml', 'differential/rust/Cargo.lock', 'dependencies/der-parser.json') }}
+          key: rust-reference-ubuntu-24.04-x86_64-unknown-linux-gnu-1.82.0-${{ hashFiles('differential/rust/Cargo.toml', 'differential/rust/Cargo.lock', 'dependencies/der-parser.json') }}
       - name: Verify a cache hit before acquisition or compilation
         if: steps.rust-cache.outputs.cache-hit == 'true'
         run: python3 scripts/check_rust_reference.py --verify-cache
@@ -44,8 +44,10 @@ jobs:
         run: python3 scripts/check_rust_reference.py --verify-cache
       - name: Test runner policies and failure handling
         run: python3 -m unittest discover -s tests -p 'test_rust*.py' -v
-      - name: Freshly acquire Core and build both adapters
+      - name: Freshly acquire Core and Rust packages and build three adapters
         run: python3 scripts/setup_rust_differential.py
+      - name: Verify published Rust gap evidence without claiming gap closure
+        run: python3 scripts/check_rust_binding.py
       - name: Require reproducible agreement, real mismatch and setup-failure reports
         run: python3 scripts/check_rust_differential.py
       - name: Compare the complete corpus and require exact reference divergence observations
@@ -61,6 +63,8 @@ jobs:
             build/rust-runs/*/provenance.json
             build/rust-runs/*/failure.json
             build/rust-runs/*/build.log
+            build/rust-runs/*/binding/build.log
+            build/rust-runs/*/binding/target/debug/build/opentlv-sys-*/out/core-selection.json
             build/rust-runs/*/core-build/CMakeCache.txt
           if-no-files-found: warn
 

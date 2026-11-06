@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "contract": "rust-ber-der-1",
-  "basis": "Source/API review and external-only capability probes; no Core or Rust binding execution results. Supported denotes availability for the specified subset, not conformance.",
+  "basis": "Pinned published source/API review, public Rust consumer probes and three-way corpus execution. Support means the specified operation is exposed, not full conformance. Open API gaps are tracked separately.",
   "core_baseline": {
     "version": "0.8.0",
     "commit": "345c77acb29266036df5f27d04ce315bb61853cc",
-    "purpose": "documentation baseline only; #30 must acquire and record its actual Core participant"
+    "purpose": "Direct Core and published Rust participant both pin this exact release revision."
   },
   "features": [
     {
@@ -15,8 +15,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h, der.h: identifiers and definite lengths"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/format.rs and src/source.rs: FormatRef::decode, Decoded::layout/encoded; differential/rust-binding/src/main.rs public probes and full corpus."
       },
       "der_parser_ber": {
         "status": "supported",
@@ -34,8 +34,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h: constructed indefinite lengths; der_validation.h rejects them for DER"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/format.rs and src/source.rs: FormatRef::decode, Decoded::layout/encoded; differential/rust-binding/src/main.rs public probes and full corpus."
       },
       "der_parser_ber": {
         "status": "supported",
@@ -53,8 +53,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_validation.h: tlv_der_read/visit and BER TreeReader"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/format.rs and src/source.rs: FormatRef::decode, Decoded::layout/encoded; differential/rust-binding/src/main.rs public probes and full corpus."
       },
       "der_parser_ber": {
         "status": "supported",
@@ -72,8 +72,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/asn1_codec.h: explicitly selected canonical value codecs, not raw framing"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/validation.rs: Format::Der.read with Strictness::Strict and Limits; differential/rust-binding/src/main.rs strict_der_rejects_root_and_nested_noncanonical_values and public_encode_round_trip_and_limits. Typed codecs remain missing (#51)."
       },
       "der_parser_ber": {
         "status": "supported",
@@ -91,8 +91,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/asn1_codec.h: canonical BOOLEAN/BIT STRING codecs are stricter than BER"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "not-comparable",
+        "evidence": "FormatRef::decode(Format::Ber) exposes raw framing; it does not promise arbitrary BER typed-value semantics. Strict DER content validation has different rules."
       },
       "der_parser_ber": {
         "status": "supported",
@@ -110,8 +110,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_validation.h plus per-node asn1_codec.h validation"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/validation.rs: Format::Der.read with Strictness::Strict and Limits; differential/rust-binding/src/main.rs strict_der_rejects_root_and_nested_noncanonical_values and public_encode_round_trip_and_limits. Typed codecs remain missing (#51)."
       },
       "der_parser_ber": {
         "status": "not-comparable",
@@ -129,8 +129,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/BER/DER traversal can expose children of all constructed classes"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/format.rs and src/source.rs: FormatRef::decode, Decoded::layout/encoded; differential/rust-binding/src/main.rs public probes and full corpus."
       },
       "der_parser_ber": {
         "status": "unsupported",
@@ -148,8 +148,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h: framing; reassembly is separate from raw values"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/format.rs and src/source.rs: FormatRef::decode, Decoded::layout/encoded; differential/rust-binding/src/main.rs public probes and full corpus."
       },
       "der_parser_ber": {
         "status": "not-comparable",
@@ -167,8 +167,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_schema.h: SET/SET OF order and DEFAULT omission require a schema"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "unsupported",
+        "evidence": "Published crates lack tlv_der_schema_* and a safe DER schema facade; generic StructureSchema is different. OpenTLV/opentlv-rust#52 under #46; differential/rust-binding/gaps.json."
       },
       "der_parser_ber": {
         "status": "not-comparable",
@@ -186,8 +186,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h and der_validation.h; raw BER deliberately accepts some non-X.690 tags"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/format.rs and src/source.rs: FormatRef::decode, Decoded::layout/encoded; differential/rust-binding/src/main.rs public probes and full corpus."
       },
       "der_parser_ber": {
         "status": "supported",
@@ -205,8 +205,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_validation.h consumed count; empty/trailing checks belong to adapter"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/format.rs and src/source.rs: FormatRef::decode, Decoded::layout/encoded; differential/rust-binding/src/main.rs public probes and full corpus."
       },
       "der_parser_ber": {
         "status": "supported",
@@ -225,7 +225,7 @@
       },
       "rust_binding": {
         "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "evidence": "Public source ranges use usize; this runner tests at most 4096 bytes and makes no architecture-wide claim."
       },
       "der_parser_ber": {
         "status": "not-tested",
@@ -243,8 +243,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/der_validation.h: independent depth/input/value/element budgets"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 src/validation.rs: Format::Der.read with Strictness::Strict and Limits; differential/rust-binding/src/main.rs strict_der_rejects_root_and_nested_noncanonical_values and public_encode_round_trip_and_limits. Typed codecs remain missing (#51)."
       },
       "der_parser_ber": {
         "status": "not-comparable",
@@ -262,8 +262,8 @@
         "evidence": "Core v0.8.0 (345c77acb29266036df5f27d04ce315bb61853cc), tlv/include/tlv/builtins/asn1/ber.h and der_validation.h writing APIs"
       },
       "rust_binding": {
-        "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "status": "supported",
+        "evidence": "Published opentlv 0.2.2 FormatRef::encode and Format::Der.write; differential/rust-binding/src/main.rs public_encode_round_trip_and_limits. No three-way encoding verdict; explicit BER indefinite output remains missing (#50)."
       },
       "der_parser_ber": {
         "status": "unsupported",
@@ -282,7 +282,7 @@
       },
       "rust_binding": {
         "status": "not-tested",
-        "evidence": "Binding package/API audit belongs to #31; no capability inferred from a package version."
+        "evidence": "Published src/format.rs and src/validation.rs expose Format::Cer and bounded strict operations; source-reviewed availability only, no CER execution/reference in this BER/DER runner."
       },
       "der_parser_ber": {
         "status": "unsupported",
@@ -293,5 +293,11 @@
         "evidence": "der-parser 10.0.0 published source; differential/rust/src/lib.rs::tests::no CER validation API selected"
       }
     }
-  ]
+  ],
+  "rust_binding_baseline": {
+    "version": "0.2.2",
+    "commit": "1b860286e342fb8872b591029a4efca19eb1895c",
+    "pin": "dependencies/opentlv-rust.json",
+    "gaps": "differential/rust-binding/gaps.json"
+  }
 }

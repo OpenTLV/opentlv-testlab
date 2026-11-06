@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "repository": "OpenTLV/opentlv-rust",
+  "version": "0.2.2",
+  "commit": "1b860286e342fb8872b591029a4efca19eb1895c",
+  "baseline_rust_version": "1.82",
+  "manifest": "differential/rust-binding/Cargo.toml",
+  "manifest_sha256": "bf2b5415f61dcff2519612c54981ace061ff0056686cedf9d99cf4ddf194adba",
+  "lockfile": "differential/rust-binding/Cargo.lock",
+  "lockfile_sha256": "5ffa63ea55ee470f32dc8932cc355fa5f97ec7654d9be780e5c0164683cb4a3d",
+  "packages": [
+    {
+      "name": "opentlv",
+      "version": "0.2.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "5076fbf8ce86caacf945cf0179dc6b58da806b0928ac9e0bb020fac12ff6e945",
+      "url": "https://static.crates.io/crates/opentlv/opentlv-0.2.2.crate",
+      "size": 162254,
+      "license": "MIT",
+      "rust_version": "1.82",
+      "published_at": "2026-11-03T11:01:46.257860Z",
+      "features": [],
+      "notices": {
+        "LICENSE": "9d1139c42bde151af259ca7196c9da2f19d85fbd3b8771a3d3f0e1e5f6490c9c"
+      }
+    },
+    {
+      "name": "opentlv-sys",
+      "version": "0.2.2",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "checksum": "7cf440936c85a74683534428080202061487e66daa110c0c5c83fa2872fba8a8",
+      "url": "https://static.crates.io/crates/opentlv-sys/opentlv-sys-0.2.2.crate",
+      "size": 49917,
+      "license": "MIT",
+      "rust_version": "1.82",
+      "published_at": "2026-11-03T11:01:43.873002Z",
+      "features": [],
+      "notices": {
+        "LICENSE": "9d1139c42bde151af259ca7196c9da2f19d85fbd3b8771a3d3f0e1e5f6490c9c"
+      }
+    }
+  ],
+  "core_lock": {
+    "schema": 1,
+    "repository": "OpenTLV/opentlv",
+    "version": "0.8.0",
+    "commit": "345c77acb29266036df5f27d04ce315bb61853cc",
+    "release_tag": "v0.8.0",
+    "release_sha256sums": "e84f3827c16f17a96ab93d21053c32f21f50e548ceb01bcea5dc2639b5af1589",
+    "allow_verified_source": true
+  }
+}

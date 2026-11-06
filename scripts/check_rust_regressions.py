@@ -58,7 +58,10 @@ def validate(report, baseline, corpus, packages):
         fixture = expected[name]
         require(all(row.get(k) == v for k, v in fixture.items()), f"{name}: fixture contract differs")
         observed = row["observed"]
-        require(set(observed) == {"core", "der-parser"}, f"{name}: missing participant")
+        require(set(observed) == set(setup.PARTICIPANTS), f"{name}: missing participant")
+        # JSON evidence sorts object keys. Reconstruct the runner's participant
+        # order so multi-participant differences/reasons retain their list order.
+        observed = {participant: observed[participant] for participant in setup.PARTICIPANTS}
         outcome, differences, reasons = runner.classify(fixture, observed)
         require((row["outcome"], row["differences"], row["reasons"]) == (outcome, differences, reasons),
                 f"{name}: inconsistent comparison verdict")
@@ -66,8 +69,9 @@ def validate(report, baseline, corpus, packages):
             case = known[name]
             require(outcome == "mismatch", f"{name}: recorded divergence disappeared; review baseline")
             require(observed == case["observed"], f"{name}: recorded participant observation changed")
-            require(runner.classify(fixture, {"core": observed["core"]})[0] == "pass",
-                    f"{name}: Core must still meet the independent expectation")
+            for participant in ("core", "rust-binding"):
+                require(runner.classify(fixture, {participant: observed[participant]})[0] == "pass",
+                        f"{name}: {participant} must still meet the independent expectation")
             matched.append(name)
         elif fixture["classification"] == "shared":
             require(outcome == "pass", f"{name}: unexpected shared {outcome}: {differences or reasons}")
@@ -91,7 +95,7 @@ def main(arguments=None):
         baseline = reference.load_json(BASELINE)
         corpus = reference.load_json(reference.CORPUS)
         reference.verify_corpus(corpus, reference.load_json(reference.MATRIX))
-        packages = {"core": reference.load_json(setup.PIN), "der-parser": reference.load_json(reference.PIN)}
+        packages = setup.package_pins()
         gate["baseline_sha256"] = identity(baseline)
         # Never accept a stale report after a crash or an invocation that writes nothing.
         with tempfile.TemporaryDirectory(prefix=".regression-", dir=args.output_dir) as directory:
@@ -122,7 +126,7 @@ def main(arguments=None):
     (args.output_dir / "regressions.md").write_text(
         "# Rust differential regression gate\n\n" + summary + "\n\n" +
         (gate["error"] or "The standards report and its mismatch counts are unchanged. "
-         "Each listed divergence matches both participant observations exactly; "
+         "Each listed divergence matches all three participant observations exactly; "
          "every other shared fixture meets the independent expectation.") + "\n", encoding="utf-8")
     return 0 if gate["status"] == "passed" else 1
 
